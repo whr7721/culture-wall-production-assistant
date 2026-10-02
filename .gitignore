@@ -19,7 +19,9 @@ output/
 Thumbs.db
 *.tmp
 *.log
+preview-*.png
 node_modules/
 dist/
 coverage/
+*.tsbuildinfo
 

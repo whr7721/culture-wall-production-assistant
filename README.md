@@ -1,8 +1,11 @@
-# 文化墙生产化辅助工具
+# 墙绘工坊 · 文化墙 AI 提案 MVP
 
-本项目研究并验证如何把 AI 文化墙效果图转化为可继续编辑、能够衔接真实生产流程的设计资产。
+本项目包含两个互不混淆但可以衔接的验证方向：
 
-当前阶段不开发完整生图网站，也不预设 SVG、CDR、AI、PSD、PDF 或 CAD 中的某一种就是最终交付格式。首要任务是分析同一真实落地项目的：
+1. 一个本地运行的简洁生图网站，用于获客展示和验证客户是否愿意提交墙体素材；
+2. 研究如何把 AI 文化墙效果图转化为可继续编辑、能够衔接真实生产流程的设计资产。
+
+生图网站不是最终生产文件工具，也不预设 SVG、CDR、AI、PSD、PDF 或 CAD 中的某一种就是最终交付格式。生产化方向仍需分析同一真实落地项目的：
 
 1. 原始需求与素材；
 2. 最终确认的效果图；
@@ -11,7 +14,29 @@
 
 只有真实案例证明高频、耗时、可定义输入输出且能接入下游软件的单一环节，才会进入第一版 MVP。
 
-## 当前内容
+## 本地生图 MVP
+
+技术栈：React + TypeScript + Vite，后端为本机 Node/Express 服务。中转站密钥只存在服务端 `.env`，不会发给浏览器。
+
+```powershell
+npm install
+Copy-Item .env.example .env
+# 编辑 .env，填写本机 IMAGE_API_KEY
+npm run dev
+```
+
+打开 `http://localhost:5173`。没有参考图时调用 OpenAI Images 兼容的 `/v1/images/generations`；上传参考图时调用 `/v1/images/edits`。
+
+构建和测试：
+
+```powershell
+npm test
+npm run build
+```
+
+自研和复用边界见 [`docs/architecture/0001-build-vs-reuse.md`](docs/architecture/0001-build-vs-reuse.md)。
+
+## 案例研究工具
 
 [`case-discovery-kit`](case-discovery-kit/README.md) 提供：
 
@@ -24,6 +49,7 @@
 ## 安全原则
 
 - 客户原件、生产文件、上传素材和生成结果不提交 Git。
+- 中转站密钥不进入浏览器、不写入源码、不提交 Git。
 - 第三方 AI 处理前必须确认资料上传授权。
 - AI 输出必须在实际设计／生产软件中验证，不能仅凭视觉相似判定可生产。
 
