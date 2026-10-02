@@ -65,7 +65,7 @@ export function App() {
           <span className="brand-mark"><i /><i /><i /></span>
           <span><strong>墙绘工坊</strong><small>CULTURE WALL STUDIO</small></span>
         </a>
-        <div className="header-note"><span>本地演示版</span> · 素材与密钥仅在本机处理</div>
+        <div className="header-note"><span>受邀试用版</span> · 上传素材会发送至第三方生图服务</div>
       </header>
 
       <main id="top">

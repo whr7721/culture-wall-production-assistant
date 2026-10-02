@@ -1,0 +1,26 @@
+[Unit]
+Description=Culture Wall invited trial
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=culturewall
+Group=culturewall
+WorkingDirectory=/opt/culture-wall/current
+Environment=NODE_ENV=production
+Environment=PATH=/opt/culture-wall/node/bin:/usr/bin:/bin
+EnvironmentFile=/etc/culture-wall/culture-wall.env
+ExecStart=/opt/culture-wall/node/bin/node --import tsx server/index.ts
+Restart=always
+RestartSec=3
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/culture-wall
+MemoryMax=1300M
+LimitNOFILE=4096
+
+[Install]
+WantedBy=multi-user.target

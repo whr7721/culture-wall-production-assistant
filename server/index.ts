@@ -3,19 +3,31 @@ import path from 'node:path'
 import { existsSync } from 'node:fs'
 import { config } from './config.ts'
 import { generationsRouter } from './routes/generations.ts'
+import { requireInvite } from './security/invites.ts'
 
 const app = express()
-const generatedDir = path.resolve('generated')
+const generatedDir = path.resolve(config.generatedDir)
 const distDir = path.resolve('dist')
 
 app.disable('x-powered-by')
+app.use((_request, response, next) => {
+  response.setHeader('X-Content-Type-Options', 'nosniff')
+  response.setHeader('Referrer-Policy', 'no-referrer')
+  response.setHeader('X-Frame-Options', 'DENY')
+  next()
+})
+app.use(requireInvite)
 app.use('/generated', express.static(generatedDir, { index: false, maxAge: '1h' }))
 app.use('/api/generations', generationsRouter)
 app.get('/api/health', (_request, response) => {
-  response.json({ ok: true, providerConfigured: Boolean(config.imageApiKey), model: config.imageModel })
+  response.json({ ok: true, providerConfigured: Boolean(config.imageApiKey) })
 })
 
 app.use((error: unknown, _request: express.Request, response: express.Response, _next: express.NextFunction) => {
+  if (error instanceof Error && error.message === 'UNSUPPORTED_IMAGE_TYPE') {
+    response.status(400).json({ error: '只接受 PNG、JPEG 或 WebP 图片。' })
+    return
+  }
   if (error instanceof Error && error.name === 'MulterError') {
     response.status(400).json({ error: '上传失败：最多 3 张图片，且单张不能超过 12 MB。' })
     return
