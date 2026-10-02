@@ -17,7 +17,17 @@ app.use((_request, response, next) => {
   next()
 })
 app.use(requireInvite)
-app.use('/generated', express.static(generatedDir, { index: false, maxAge: '1h' }))
+app.get('/generated/:filename', (request, response) => {
+  const filename = request.params.filename
+  const username = response.locals.invite?.username as string | undefined
+  if (!username || !/^[a-z][a-z0-9_-]{1,30}$/.test(username) || !/^[0-9a-f-]{36}\.(png|jpg|webp)$/.test(filename)) {
+    response.sendStatus(404)
+    return
+  }
+  response.sendFile(path.join(generatedDir, username, filename), (error) => {
+    if (error && !response.headersSent) response.sendStatus(404)
+  })
+})
 app.use('/api/generations', generationsRouter)
 app.get('/api/health', (_request, response) => {
   response.json({ ok: true, providerConfigured: Boolean(config.imageApiKey) })

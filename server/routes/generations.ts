@@ -44,7 +44,7 @@ router.post('/', upload.array('references', 3), async (request, response) => {
       prompt: providerPrompt,
       size: sizeByAspect[aspect] || sizeByAspect.landscape,
       references,
-    })
+    }, (response.locals.invite as InviteRecord).username)
     response.json({ ...saved, prompt, style, aspect, createdAt: new Date().toISOString() })
   } catch (error) {
     if (error instanceof GateError) {

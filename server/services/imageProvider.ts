@@ -82,10 +82,11 @@ async function readLimitedImage(response: Response): Promise<Buffer> {
   return image
 }
 
-async function persistProviderImage(image: ProviderImage): Promise<{ id: string; imageUrl: string }> {
+async function persistProviderImage(image: ProviderImage, username: string): Promise<{ id: string; imageUrl: string }> {
+  if (!/^[a-z][a-z0-9_-]{1,30}$/.test(username)) throw new Error('受邀账号格式错误')
   const id = randomUUID()
-  const outputDir = path.resolve(config.generatedDir)
-  await mkdir(outputDir, { recursive: true })
+  const outputDir = path.resolve(config.generatedDir, username)
+  await mkdir(outputDir, { recursive: true, mode: 0o700 })
 
   if (image.b64_json) {
     const filename = `${id}.png`
@@ -113,7 +114,7 @@ async function persistProviderImage(image: ProviderImage): Promise<{ id: string;
   throw new Error('中转站响应中没有找到图片数据')
 }
 
-export async function generateWithProvider(input: ProviderInput): Promise<{ id: string; imageUrl: string }> {
+export async function generateWithProvider(input: ProviderInput, username: string): Promise<{ id: string; imageUrl: string }> {
   if (!config.imageApiKey) throw new Error('尚未配置 IMAGE_API_KEY，请先填写本机 .env')
 
   const response = input.references.length > 0 ? await callEdit(input) : await callGeneration(input)
@@ -125,5 +126,5 @@ export async function generateWithProvider(input: ProviderInput): Promise<{ id: 
   const payload = (await response.json()) as ProviderResponse
   const image = payload.data?.[0]
   if (!image) throw new Error('中转站响应格式异常：缺少 data[0]')
-  return persistProviderImage(image)
+  return persistProviderImage(image, username)
 }

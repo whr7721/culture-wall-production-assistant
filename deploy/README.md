@@ -7,7 +7,7 @@
 - `/opt/culture-wall/node`：经官方 SHA-256 校验的 Node.js LTS；
 - `/opt/culture-wall/releases/<commit>`：每次发布的代码与依赖；
 - `/opt/culture-wall/current`：当前版本链接；
-- `/var/lib/culture-wall/generated`：持久化生成图片；
+- `/var/lib/culture-wall/generated/<受邀账号>`：按账号隔离、持久化的生成图片；
 - `/var/lib/culture-wall/usage.json`：持久化试用额度；
 - `/etc/culture-wall/culture-wall.env`：服务端中转站配置；
 - `/etc/culture-wall/invites.json`：受邀用户密码哈希和额度；
@@ -26,7 +26,9 @@ ssh -i C:\Users\whr\.ssh\culture-wall-ecs-ed25519 -N -L 127.0.0.1:18080:127.0.0.
 
 ## 给试用者开通
 
-试用者在自己的电脑生成 SSH 公钥，提供 `.pub` 内容给管理员。管理员为每人创建普通系统账号，只允许该密钥转发到 `127.0.0.1:8080`；再通过 `npm run invite:add -- <用户名> [每日额度] [总额度]` 创建浏览器受邀账号。把对应账号密码通过单独的保密渠道交给试用者，不共用服务器 root 密钥。
+技术熟练的试用者可在自己的电脑生成 SSH 公钥，提供 `.pub` 内容给管理员。管理员为每人创建普通系统账号，只允许该密钥转发到 `127.0.0.1:8080`；再通过 `npm run invite:add -- <用户名> [每日额度] [总额度]` 创建浏览器受邀账号。把对应账号密码通过单独的保密渠道交给试用者，不共用服务器 root 密钥。
+
+不熟悉命令行的 Windows 试用者使用本机生成的独立试用密钥和 `Start-Trial.cmd` 一键包。该包只包含受限密钥、固定服务器公钥和启动脚本；浏览器账号密码单独交付。密钥泄露时，管理员应移除该试用账号的 `authorized_keys` 并撤销对应浏览器账号。当前首个试用包位于 `data/invite-bundles/culture-wall-trial1-windows.zip`，被 Git 忽略；浏览器凭据位于 `data/invite-credentials/trial1.txt`，同样不提交 Git。
 
 Windows 试用者隧道示例（把用户名、密钥路径替换成各自的）：
 
