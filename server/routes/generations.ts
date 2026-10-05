@@ -6,8 +6,10 @@ import { generateWithProvider } from '../services/imageProvider.ts'
 import { GateError, generationGate } from '../security/generationGate.ts'
 import type { InviteRecord } from '../security/invites.ts'
 import { isSupportedImage } from '../security/imageValidation.ts'
+import { imageModelOptions, resolveImageModelChoice } from '../services/imageModels.ts'
 
 const router = Router()
+router.get('/models', (_request, response) => response.json({ models: imageModelOptions() }))
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 12 * 1024 * 1024, files: 3 },
@@ -26,6 +28,11 @@ router.post('/', upload.array('references', 3), async (request, response) => {
   const aspect = String(request.body.aspect || 'landscape')
   const customSize = String(request.body.size || '')
   const shortTitle = String(request.body.shortTitle || '').trim()
+  const modelChoice = resolveImageModelChoice(request.body.modelChoice)
+  if (!modelChoice) {
+    response.status(400).json({ error: '所选生图模型尚未配置或不可用。' })
+    return
+  }
 
   if (prompt.length < 10 || prompt.length > 1200) {
     response.status(400).json({ error: '需求描述应为 10—1200 个字符。' })
@@ -38,6 +45,10 @@ router.post('/', upload.array('references', 3), async (request, response) => {
   const size = resolveImageSize(aspect, customSize)
   if (!size) {
     response.status(400).json({ error: '自定义尺寸需为 512—2048 像素、16 的倍数，比例不超过 3:1，且不少于 655360 像素。' })
+    return
+  }
+  if (modelChoice.startsWith('kami-') && aspect === 'custom') {
+    response.status(400).json({ error: '卡米 Banana 暂不支持自定义像素尺寸；请选择横版、方形或竖版。' })
     return
   }
 
@@ -56,6 +67,7 @@ router.post('/', upload.array('references', 3), async (request, response) => {
       prompt: providerPrompt,
       size,
       references,
+      modelChoice,
     }, (response.locals.invite as InviteRecord).username)
     response.json({ ...saved, prompt, style, aspect, requestedSize: size, createdAt: new Date().toISOString() })
   } catch (error) {

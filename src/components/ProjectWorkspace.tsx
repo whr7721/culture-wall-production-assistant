@@ -3,14 +3,14 @@ import { Canvas, FabricImage, Rect, Textbox } from 'fabric'
 import { generateImage } from '../lib/api'
 import { createProject, getProject, listProjects, saveProject, uploadAsset, type Project, type ProjectRow, type WallElement } from '../lib/projects'
 import { downloadPreview, downloadPsd, downloadSvg } from '../lib/exports'
-import type { Aspect } from '../types'
+import type { Aspect, ImageModelChoice } from '../types'
 
 const uid = () => crypto.randomUUID()
 const number = (value: string, fallback: number) => Number.isFinite(Number(value)) ? Number(value) : fallback
 const fields = ['x', 'y', 'width', 'height'] as const
 const title = (item: WallElement) => item.kind === 'text' ? item.text.slice(0, 16) : item.label
 
-export function ProjectWorkspace() {
+export function ProjectWorkspace({ modelChoice, modelLabel }: { modelChoice: ImageModelChoice; modelLabel: string }) {
   const [rows, setRows] = useState<ProjectRow[]>([])
   const [project, setProject] = useState<Project | null>(null)
   const [selected, setSelected] = useState<string | null>(null)
@@ -118,7 +118,7 @@ export function ProjectWorkspace() {
       `需呈现的文案（图中如有错字，后续以可编辑平面稿为准）：${saved.copy || '无'}。`,
     ].join('\n').slice(0, 1200)
     const aspect: Aspect = saved.widthMm / saved.heightMm > 1.2 ? 'landscape' : saved.heightMm / saved.widthMm > 1.2 ? 'portrait' : 'square'
-    const result = await generateImage({ prompt, style: 'brand', aspect, references })
+    const result = await generateImage({ prompt, style: 'brand', aspect, references, modelChoice })
     const next = await saveProject({ ...saved, concepts: [...saved.concepts, { id: result.id, imageUrl: result.imageUrl, provider: result.provider || 'unknown', model: result.model || 'unknown', role, createdAt: result.createdAt }] })
     setProject(next); await refreshRows()
     setMessage('概念图已生成并保存。请在平面稿中重新输入准确文字和坐标。')
@@ -154,7 +154,8 @@ export function ProjectWorkspace() {
         <input type="file" accept="image/png,image/jpeg,image/webp" onChange={(event) => { const file = event.target.files?.[0]; if (file) void perform(async () => { const saved = await save(project); const result = await uploadAsset(saved, file); setProject(result.project); setMessage('素材已上传，只有此受邀账号可读取。') }); event.target.value = '' }}/>
         {project.assets.map((asset) => <label key={asset.id} className="asset-row"><input type="checkbox" checked={selectedAssets.includes(asset.id)} onChange={(event) => setSelectedAssets(event.target.checked ? [...selectedAssets, asset.id].slice(0, 3) : selectedAssets.filter((id) => id !== asset.id))}/><img src={asset.url} alt="素材缩略图"/><span>{asset.name}</span></label>)}
         <p className="tiny-note">勾选素材才会在点击生成时发送给当前生图服务。请先确认素材使用授权。</p>
-        <div className="button-pair"><button type="button" disabled={busy} onClick={() => void makeConcept('space')}>生成空间概念</button><button type="button" disabled={busy} onClick={() => void makeConcept('flat')}>生成正视候选</button></div>
+        <p className="tiny-note">概念图使用上方所选模型：{modelLabel || '正在读取…'}</p>
+        <div className="button-pair"><button type="button" disabled={busy || !modelLabel} onClick={() => void makeConcept('space')}>生成空间概念</button><button type="button" disabled={busy || !modelLabel} onClick={() => void makeConcept('flat')}>生成正视候选</button></div>
       </div>
       <div className="project-editor">
         <div className="concept-strip">{project.concepts.map((item) => <div key={item.id}><img src={item.imageUrl} alt={item.role === 'space' ? '空间概念' : '正视候选'}/><small>{item.role === 'space' ? '空间概念' : '正视候选'} · {item.provider}</small></div>)}</div>

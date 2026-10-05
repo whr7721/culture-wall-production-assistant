@@ -31,6 +31,8 @@ npm run dev
 
 默认中转站：无参考图调用 `/v1/images/generations`，有参考图调用 `/v1/images/edits`。服务器可设置 `IMAGE_PROVIDER=alibaba`、`ALIBABA_IMAGE_API_KEY` 和与密钥同地域的 `ALIBABA_IMAGE_BASE_URL` 切至百炼 Qwen Image 3.0；该适配器统一调用百炼兼容模式 `/images/generations`，参考图使用 JSON `image` 扩展字段，不能与中转站请求格式混用。百炼模型/地域/计费及图片下载域名应按账户实际配置核实；未获测试费用许可前不要填入密钥并切换。普通试用者无法在页面切换供应商。两条通道都把图片落盘为本站历史资源，切换后旧图片不依赖原供应商。
 
+生图表单现在有服务端白名单控制的模型下拉菜单：现有默认通道、卡米 Banana 2K、卡米 Banana Pro 4K。卡米选项只有配置 `KAMI_IMAGE_API_KEY` 后才可选；模型 ID 可用 `KAMI_BANANA_MODEL`、`KAMI_BANANA_4K_MODEL` 调整。适配器按 [New API 的 Gemini 原生图片接口](https://docs.newapi.pro/zh/docs/api/ai-model/images/gemini/geminirelayv1beta-383837589) 请求，参考图以内联数据发送，并把图片直接保存到本站。卡米站点本身未找到公开的接口契约，**因此它仍待新密钥和小额真实请求验证，不能称为已打通**；4K 是模型输出档位，不等于生产尺寸。卡米 Banana 暂只用横版、方形、竖版预设比例，不能用自定义像素尺寸。既有额度与并发限制继续适用；不会自动故障切换或在失败后悄悄重复调用。
+
 上传到项目的素材只保存在本站服务器，勾选并点击生图时才随请求发送第三方；上传前仍应取得客户授权。PSD 的文字层是独立位图层，准确原文保存在本站项目内供修改后重导出；SVG 则保留文字对象。两者均非最终生产文件，须由设计师在 Illustrator/Photoshop 和真实工艺流程复核。
 
 杭州 ECS 受邀测试部署方式与 SSH 隧道访问见 [`deploy/README.md`](deploy/README.md)。部署时启用受邀账号、每日／总生成额度、单任务并发限制，页面、API 与生成图片统一受保护。

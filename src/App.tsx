@@ -1,10 +1,10 @@
-import { lazy, Suspense, useMemo, useState } from 'react'
+import { lazy, Suspense, useEffect, useMemo, useState } from 'react'
 import { ReferenceUploader } from './components/ReferenceUploader'
 import { ResultPanel } from './components/ResultPanel'
-import { generateImage } from './lib/api'
+import { generateImage, getImageModels } from './lib/api'
 import { loadHistory, saveHistory } from './lib/history'
 import { validateCustomImageSize } from '../shared/imageSize'
-import type { Aspect, GenerationResult, StylePreset } from './types'
+import type { Aspect, GenerationResult, ImageModelChoice, ImageModelOption, StylePreset } from './types'
 
 const styles: Array<{ id: StylePreset; title: string; caption: string }> = [
   { id: 'brand', title: '品牌简约', caption: '克制留白 · 清晰层级' },
@@ -32,16 +32,21 @@ export function App() {
   const [history, setHistory] = useState<GenerationResult[]>(loadHistory)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
+  const [modelChoice, setModelChoice] = useState<ImageModelChoice>('default')
+  const [modelOptions, setModelOptions] = useState<ImageModelOption[]>([])
+
+  useEffect(() => { void getImageModels().then(setModelOptions).catch(() => setError('模型列表加载失败，请刷新页面。')) }, [])
 
   const customSize = validateCustomImageSize(customWidth, customHeight)
-  const canSubmit = useMemo(() => prompt.trim().length >= 10 && !isLoading && (aspect !== 'custom' || Boolean(customSize)), [prompt, isLoading, aspect, customSize])
+  const selectedModel = modelOptions.find((item) => item.id === modelChoice)
+  const canSubmit = useMemo(() => prompt.trim().length >= 10 && !isLoading && Boolean(selectedModel?.available) && (aspect !== 'custom' || Boolean(customSize)) && !(modelChoice.startsWith('kami-') && aspect === 'custom'), [prompt, isLoading, selectedModel, aspect, customSize, modelChoice])
 
   const submit = async () => {
     if (!canSubmit) return
     setError('')
     setIsLoading(true)
     try {
-      const next = await generateImage({ prompt: prompt.trim(), style, aspect, references, size: aspect === 'custom' ? customSize || undefined : undefined, shortTitle: shortTitle.trim() })
+      const next = await generateImage({ prompt: prompt.trim(), style, aspect, references, size: aspect === 'custom' ? customSize || undefined : undefined, shortTitle: shortTitle.trim(), modelChoice })
       const nextHistory = [next, ...history.filter((item) => item.id !== next.id)].slice(0, 8)
       setResult(next)
       setHistory(nextHistory)
@@ -106,8 +111,16 @@ export function App() {
 
             <ReferenceUploader files={references} onChange={setReferences} />
 
+            <div className="field-group compact">
+              <div className="field-heading"><div><span className="step-number">03</span><label htmlFor="image-model">生图模型</label></div></div>
+              <select id="image-model" className="model-select" value={modelChoice} onChange={(event) => setModelChoice(event.target.value as ImageModelChoice)}>
+                {modelOptions.map((item) => <option key={item.id} value={item.id} disabled={!item.available}>{item.label}{item.available ? '' : ' · 待配置'}</option>)}
+              </select>
+              <small className="field-help">{selectedModel?.detail || '正在读取可用模型…'}。4K 指模型输出档位，不代表墙体实际制作尺寸；不同模型费用可能不同。</small>
+            </div>
+
             <div className="field-group">
-              <div className="field-heading"><div><span className="step-number">03</span><label>选择视觉方向</label></div></div>
+              <div className="field-heading"><div><span className="step-number">04</span><label>选择视觉方向</label></div></div>
               <div className="option-grid three">
                 {styles.map((item) => (
                   <button key={item.id} className={`option-card ${style === item.id ? 'selected' : ''}`} type="button" onClick={() => setStyle(item.id)}>
@@ -118,7 +131,7 @@ export function App() {
             </div>
 
             <div className="field-group compact">
-              <div className="field-heading"><div><span className="step-number">04</span><label>画面方向</label></div></div>
+              <div className="field-heading"><div><span className="step-number">05</span><label>画面方向</label></div></div>
               <div className="option-grid four">
                 {aspects.map((item) => (
                   <button key={item.id} className={`aspect-card ${aspect === item.id ? 'selected' : ''}`} type="button" onClick={() => setAspect(item.id)}>
@@ -132,6 +145,7 @@ export function App() {
                 <label>高度 px<input aria-label="自定义高度" type="number" min="512" max="2048" step="16" value={customHeight} onChange={(event) => setCustomHeight(Number(event.target.value))}/></label>
               </div>}
               {aspect === 'custom' && <small className={customSize ? 'field-help' : 'validation-copy'}>宽高需为 512—2048 px、16 的倍数，比例不超过 3:1，像素总数不少于 655360。更大尺寸可能增加耗时与费用。中转站实际兼容性尚未实测；若拒绝请求，已受理的尝试仍可能计入试用额度。</small>}
+              {aspect === 'custom' && modelChoice.startsWith('kami-') && <small className="validation-copy">Banana 模型暂只支持横版、方形、竖版预设比例。</small>}
             </div>
 
             <button className="generate-button" type="button" disabled={!canSubmit} onClick={submit}>
@@ -156,7 +170,7 @@ export function App() {
             </div>
           </section>
         )}
-        <Suspense fallback={<p>正在载入可编辑工作台…</p>}><ProjectWorkspace /></Suspense>
+        <Suspense fallback={<p>正在载入可编辑工作台…</p>}><ProjectWorkspace modelChoice={modelChoice} modelLabel={selectedModel?.label || ''} /></Suspense>
       </main>
 
       <footer><span>墙绘工坊 MVP · 效果图用于方向沟通</span><span>生产深化能力正在真实案例中验证</span></footer>

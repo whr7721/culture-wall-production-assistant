@@ -3,11 +3,13 @@ import { mkdir, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import { config } from '../config.ts'
 import { isSupportedImage } from '../security/imageValidation.ts'
+import type { ImageModelChoice } from './imageModels.ts'
 
 export interface ProviderInput {
   prompt: string
   size: string
   references: Express.Multer.File[]
+  modelChoice?: ImageModelChoice
 }
 
 interface ProviderImage {
@@ -17,7 +19,7 @@ interface ProviderImage {
 
 export interface ProviderOutput {
   image: ProviderImage
-  provider: 'relay' | 'alibaba'
+  provider: 'relay' | 'alibaba' | 'kami'
   model: string
   allowedDownloadHosts: string[]
 }
@@ -84,7 +86,12 @@ async function persistProviderImage(output: ProviderOutput, username: string): P
 export async function generateWithProvider(input: ProviderInput, username: string): Promise<{ id: string; imageUrl: string; provider: string; model: string }> {
   const { generateWithRelay } = await import('./providers/relay.ts')
   const { generateWithAlibaba } = await import('./providers/alibaba.ts')
-  const output = config.imageProvider === 'alibaba' ? await generateWithAlibaba(input) : await generateWithRelay(input)
+  const { generateWithKami } = await import('./providers/kami.ts')
+  const output = input.modelChoice === 'kami-banana'
+    ? await generateWithKami(input, config.kamiBananaModel, '2K')
+    : input.modelChoice === 'kami-banana-4k'
+      ? await generateWithKami(input, config.kamiBanana4kModel, '4K')
+      : config.imageProvider === 'alibaba' ? await generateWithAlibaba(input) : await generateWithRelay(input)
   const saved = await persistProviderImage(output, username)
   return { ...saved, provider: output.provider, model: output.model }
 }

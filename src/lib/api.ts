@@ -1,4 +1,4 @@
-import type { ApiErrorBody, Aspect, GenerationResult, StylePreset } from '../types'
+import type { ApiErrorBody, Aspect, GenerationResult, ImageModelChoice, ImageModelOption, StylePreset } from '../types'
 
 interface GenerateInput {
   prompt: string
@@ -7,6 +7,14 @@ interface GenerateInput {
   references: File[]
   size?: string
   shortTitle?: string
+  modelChoice?: ImageModelChoice
+}
+
+export async function getImageModels(): Promise<ImageModelOption[]> {
+  const response = await fetch('/api/generations/models')
+  if (!response.ok) throw new Error('生图模型列表加载失败')
+  const payload = await response.json() as { models: ImageModelOption[] }
+  return payload.models
 }
 
 export async function generateImage(input: GenerateInput): Promise<GenerationResult> {
@@ -16,6 +24,7 @@ export async function generateImage(input: GenerateInput): Promise<GenerationRes
   form.set('aspect', input.aspect)
   if (input.size) form.set('size', input.size)
   if (input.shortTitle) form.set('shortTitle', input.shortTitle)
+  if (input.modelChoice) form.set('modelChoice', input.modelChoice)
   input.references.forEach((file) => form.append('references', file))
 
   const response = await fetch('/api/generations', {

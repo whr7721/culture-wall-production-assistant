@@ -16,7 +16,7 @@
 * { box-sizing: border-box; }
 html { scroll-behavior: smooth; }
 body { margin: 0; min-width: 320px; min-height: 100vh; }
-button, textarea, input { font: inherit; }
+button, textarea, input, select { font: inherit; }
 button, a { -webkit-tap-highlight-color: transparent; }
 button { color: inherit; }
 
@@ -58,6 +58,7 @@ textarea::placeholder { color: #9a9b94; }
 .short-title-field + input { width: 100%; margin-top: 7px; padding: 11px 12px; border: 1px solid var(--line); background: #fff; outline: none; }
 .short-title-field + input:focus { border-color: var(--ink); }
 .field-help { display: block; margin-top: 8px; color: var(--muted); font-size: 10px; line-height: 1.6; }
+.model-select { width: 100%; padding: 12px; border: 1px solid var(--line); background: #fff; color: var(--ink); }
 
 .drop-zone { width: 100%; min-height: 122px; border: 1px dashed #aaaca4; background: transparent; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; cursor: pointer; transition: .2s; }
 .drop-zone:hover { background: #eeede6; border-color: var(--ink); }

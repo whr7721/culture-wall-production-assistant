@@ -33,6 +33,8 @@ try {
   })
 
   await page.goto(baseUrl, { waitUntil: 'networkidle' })
+  await page.locator('#image-model option').first().waitFor({ state: 'attached' })
+  if (await page.locator('#image-model option').count() !== 3) throw new Error('生图模型下拉菜单缺少选项')
   await page.locator('textarea').fill('为科技企业设计一面蓝白色文化墙，左侧品牌故事，右侧核心价值观。')
   await page.locator('#short-title').fill('创新引领未来')
   const imageData = await page.evaluate(() => {
@@ -52,7 +54,7 @@ try {
   await page.getByLabel('自定义宽度').fill('1600')
   await page.getByLabel('自定义高度').fill('1024')
   await page.getByRole('button', { name: '生成文化墙提案' }).click()
-  if (!submittedBody.includes('name="size"') || !submittedBody.includes('1600x1024') || !submittedBody.includes('创新引领未来')) throw new Error('自定义尺寸或短标题没有发送到本站 API')
+  if (!submittedBody.includes('name="size"') || !submittedBody.includes('1600x1024') || !submittedBody.includes('创新引领未来') || !submittedBody.includes('name="modelChoice"')) throw new Error('自定义尺寸、短标题或模型选项没有发送到本站 API')
   await page.locator('img[alt="生成的文化墙效果图"]').waitFor()
   const downloadEvent = page.waitForEvent('download')
   await page.getByRole('link', { name: '下载图片' }).click()
