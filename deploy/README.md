@@ -31,7 +31,7 @@ ssh -i C:\Users\whr\.ssh\culture-wall-ecs-ed25519 -N -L 127.0.0.1:18080:127.0.0.
 
 技术熟练的试用者可在自己的电脑生成 SSH 公钥，提供 `.pub` 内容给管理员。管理员为每人创建普通系统账号，只允许该密钥转发到 `127.0.0.1:8080`；再通过 `npm run invite:add -- <用户名> [每日额度] [总额度]` 创建浏览器受邀账号。把对应账号密码通过单独的保密渠道交给试用者，不共用服务器 root 密钥。
 
-不熟悉命令行的 Windows 试用者使用本机生成的独立试用密钥和 `Start-Trial.cmd` 一键包。该包只包含受限密钥、固定服务器公钥和启动脚本；浏览器账号密码单独交付。密钥泄露时，管理员应移除该试用账号的 `authorized_keys` 并撤销对应浏览器账号。当前首个试用包位于 `data/invite-bundles/culture-wall-trial1-windows.zip`，被 Git 忽略；浏览器凭据位于 `data/invite-credentials/trial1.txt`，同样不提交 Git。
+不熟悉命令行的 Windows 试用者使用本机生成的独立试用密钥和 `Start-Trial.cmd` 一键包。该包只包含受限密钥、固定服务器公钥和启动脚本；浏览器账号密码单独交付。密钥泄露时，管理员应移除该试用账号的 `authorized_keys` 并撤销对应浏览器账号。当前首个试用包位于 `data/invite-bundles/culture-wall-trial1-windows.zip`，被 Git 忽略；浏览器凭据位于 `data/invite-credentials/trial1.txt`，同样不提交 Git。新版脚本优先使用本机 `18080` 端口；若被其他预览占用，会尝试 `18081`—`18089` 并打开实际使用的地址，不会关闭别人的进程。已分发的旧 ZIP 不会自动更新，需要重新发送新版包。
 
 Windows 试用者隧道示例（把用户名、密钥路径替换成各自的）：
 
