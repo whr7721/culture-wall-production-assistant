@@ -32,7 +32,7 @@ app.get('/generated/:filename', (request, response) => {
 app.use('/api/generations', generationsRouter)
 app.use('/api/projects', projectsRouter)
 app.get('/api/health', (_request, response) => {
-  response.json({ ok: true, providerConfigured: config.imageProvider === 'alibaba' ? Boolean(config.alibabaApiKey) : Boolean(config.imageApiKey) })
+  response.json({ ok: true, providerConfigured: config.imageProvider === 'alibaba' ? Boolean(config.alibabaApiKey && config.alibabaBaseUrl) : Boolean(config.imageApiKey) })
 })
 
 app.use((error: unknown, _request: express.Request, response: express.Response, _next: express.NextFunction) => {
