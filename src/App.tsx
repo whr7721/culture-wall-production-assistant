@@ -144,7 +144,7 @@ export function App() {
                 <span>×</span>
                 <label>高度 px<input aria-label="自定义高度" type="number" min="512" max="2048" step="16" value={customHeight} onChange={(event) => setCustomHeight(Number(event.target.value))}/></label>
               </div>}
-              {aspect === 'custom' && <small className={customSize ? 'field-help' : 'validation-copy'}>宽高需为 512—2048 px、16 的倍数，比例不超过 3:1，像素总数不少于 655360。更大尺寸可能增加耗时与费用。中转站实际兼容性尚未实测；若拒绝请求，已受理的尝试仍可能计入试用额度。</small>}
+              {aspect === 'custom' && <small className={customSize ? 'field-help' : 'validation-copy'}>宽高需为 512—2048 px、16 的倍数，比例不超过 3:1，像素总数不少于 655360。更大尺寸可能增加耗时与费用；不同模型对自定义尺寸的支持可能不同。</small>}
               {aspect === 'custom' && modelChoice.startsWith('kami-') && <small className="validation-copy">Banana 模型暂只支持横版、方形、竖版预设比例。</small>}
             </div>
 

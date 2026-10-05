@@ -51,6 +51,7 @@ describe('provider adapters', () => {
     expect(resolveImageModelChoice('kami-banana-4k')).toBe('kami-banana-4k')
     expect(resolveImageModelChoice('arbitrary-expensive-model')).toBeNull()
     expect(imageModelOptions()).toHaveLength(3)
+    expect(imageModelOptions().map((item) => `${item.label} ${item.detail}`).join(' ')).not.toMatch(/卡米|中转站|百炼/)
     config.kamiApiKey = ''
     expect(resolveImageModelChoice('kami-banana')).toBeNull()
   })

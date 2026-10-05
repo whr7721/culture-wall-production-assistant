@@ -4,9 +4,9 @@ export type ImageModelChoice = 'default' | 'kami-banana' | 'kami-banana-4k'
 
 export function imageModelOptions() {
   return [
-    { id: 'default' as const, label: config.imageProvider === 'alibaba' ? `百炼 · ${config.alibabaModel}` : `现有中转站 · ${config.imageModel}`, available: config.imageProvider === 'alibaba' ? Boolean(config.alibabaApiKey && config.alibabaBaseUrl) : Boolean(config.imageApiKey), detail: '沿用当前已配置通道' },
-    { id: 'kami-banana' as const, label: '卡米 · Nano Banana 2K', available: Boolean(config.kamiApiKey), detail: '参考图与文生图；实际模型映射以卡米账户为准' },
-    { id: 'kami-banana-4k' as const, label: '卡米 · Nano Banana Pro 4K', available: Boolean(config.kamiApiKey), detail: '4K 档可能更贵、更慢；需先核实账户支持' },
+    { id: 'default' as const, label: config.imageProvider === 'alibaba' ? 'Qwen Image 3.0' : 'Image 2.5', available: config.imageProvider === 'alibaba' ? Boolean(config.alibabaApiKey && config.alibabaBaseUrl) : Boolean(config.imageApiKey), detail: '适合日常方案探索，支持参考图继续修改' },
+    { id: 'kami-banana' as const, label: 'Nano Banana 2K', available: Boolean(config.kamiApiKey), detail: '适合快速探索，支持文字和参考图生成' },
+    { id: 'kami-banana-4k' as const, label: 'Nano Banana Pro 4K', available: Boolean(config.kamiApiKey), detail: '更高清的画面档位，生成可能更慢、费用更高' },
   ]
 }
 

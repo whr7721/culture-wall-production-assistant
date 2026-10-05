@@ -158,7 +158,7 @@ export function ProjectWorkspace({ modelChoice, modelLabel }: { modelChoice: Ima
         <div className="button-pair"><button type="button" disabled={busy || !modelLabel} onClick={() => void makeConcept('space')}>生成空间概念</button><button type="button" disabled={busy || !modelLabel} onClick={() => void makeConcept('flat')}>生成正视候选</button></div>
       </div>
       <div className="project-editor">
-        <div className="concept-strip">{project.concepts.map((item) => <div key={item.id}><img src={item.imageUrl} alt={item.role === 'space' ? '空间概念' : '正视候选'}/><small>{item.role === 'space' ? '空间概念' : '正视候选'} · {item.provider}</small></div>)}</div>
+        <div className="concept-strip">{project.concepts.map((item) => <div key={item.id}><img src={item.imageUrl} alt={item.role === 'space' ? '空间概念' : '正视候选'}/><small>{item.role === 'space' ? '空间概念' : '正视候选'}</small></div>)}</div>
         <h3>可编辑正视图 <small>以 mm 定位；拖动元素后保存</small></h3>
         <div className="wall-scroll"><canvas ref={canvasElement}/></div>
         <div className="button-pair">
