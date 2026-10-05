@@ -35,6 +35,13 @@ try {
   await page.goto(baseUrl, { waitUntil: 'networkidle' })
   await page.locator('#image-model option').first().waitFor({ state: 'attached' })
   if (await page.locator('#image-model option').count() !== 3) throw new Error('生图模型下拉菜单缺少选项')
+  if (process.env.EXPECT_BANANA_MODELS === '1') {
+    for (const model of ['kami-banana', 'kami-banana-4k']) {
+      await page.locator('#image-model').selectOption(model)
+      if (await page.locator('#image-model').inputValue() !== model) throw new Error(`${model} 无法选中`)
+    }
+    await page.locator('#image-model').selectOption('default')
+  }
   await page.locator('textarea').fill('为科技企业设计一面蓝白色文化墙，左侧品牌故事，右侧核心价值观。')
   await page.locator('#short-title').fill('创新引领未来')
   const imageData = await page.evaluate(() => {
@@ -66,7 +73,7 @@ try {
   await page.locator('.history-grid button').first().click()
   await page.getByRole('button', { name: '作为参考继续修改' }).click()
   await page.getByText('墙面/主参考').waitFor()
-  console.log('浏览器验收通过：短标题、自定义尺寸、上传缩略图→提交→展示→下载→历史跨刷新→继续修改。生成响应采用模拟图片，未调用生图 API。')
+  console.log(`浏览器验收通过：${process.env.EXPECT_BANANA_MODELS === '1' ? '两款 Banana 模型可切换、' : ''}短标题、自定义尺寸、上传缩略图→提交→展示→下载→历史跨刷新→继续修改。生成响应采用模拟图片，未调用生图 API。`)
 } finally {
   await browser.close()
 }
