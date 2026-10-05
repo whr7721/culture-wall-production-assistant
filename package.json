@@ -11,15 +11,19 @@
     "test:watch": "vitest",
     "invite:add": "tsx scripts/create-invite.ts",
     "invite:limit": "tsx scripts/set-invite-limit.ts",
-    "test:browser": "tsx scripts/acceptance-browser.ts"
+    "test:browser": "tsx scripts/acceptance-browser.ts",
+    "test:project-browser": "tsx scripts/acceptance-project.ts"
   },
   "dependencies": {
+    "ag-psd": "^31.0.2",
     "dotenv": "^17.2.3",
     "express": "^5.1.0",
+    "fabric": "^7.4.0",
     "multer": "^2.0.2",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
-    "tsx": "^4.20.6"
+    "tsx": "^4.20.6",
+    "zod": "^4.6.5"
   },
   "devDependencies": {
     "@types/express": "^5.0.3",

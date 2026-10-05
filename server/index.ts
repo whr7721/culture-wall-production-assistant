@@ -3,6 +3,7 @@ import path from 'node:path'
 import { existsSync } from 'node:fs'
 import { config } from './config.ts'
 import { generationsRouter } from './routes/generations.ts'
+import { projectsRouter } from './routes/projects.ts'
 import { requireInvite } from './security/invites.ts'
 
 const app = express()
@@ -29,8 +30,9 @@ app.get('/generated/:filename', (request, response) => {
   })
 })
 app.use('/api/generations', generationsRouter)
+app.use('/api/projects', projectsRouter)
 app.get('/api/health', (_request, response) => {
-  response.json({ ok: true, providerConfigured: Boolean(config.imageApiKey) })
+  response.json({ ok: true, providerConfigured: config.imageProvider === 'alibaba' ? Boolean(config.alibabaApiKey) : Boolean(config.imageApiKey) })
 })
 
 app.use((error: unknown, _request: express.Request, response: express.Response, _next: express.NextFunction) => {
@@ -53,5 +55,5 @@ if (existsSync(distDir)) {
 
 app.listen(config.port, '127.0.0.1', () => {
   console.log(`Culture Wall Studio server: http://127.0.0.1:${config.port}`)
-  console.log(`Image provider: ${config.imageModel} (${config.imageApiKey ? 'configured' : 'missing key'})`)
+  console.log(`Image provider: ${config.imageProvider} (${config.imageProvider === 'alibaba' ? config.alibabaModel : config.imageModel})`)
 })

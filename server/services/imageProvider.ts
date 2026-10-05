@@ -15,55 +15,26 @@ interface ProviderImage {
   url?: string
 }
 
-interface ProviderResponse {
-  data?: ProviderImage[]
+export interface ProviderOutput {
+  image: ProviderImage
+  provider: 'relay' | 'alibaba'
+  model: string
+  allowedDownloadHosts: string[]
 }
 
-function authHeaders(): HeadersInit {
-  return { Authorization: `Bearer ${config.imageApiKey}` }
-}
-
-async function callGeneration(input: ProviderInput): Promise<Response> {
-  return fetch(`${config.imageApiBaseUrl}/v1/images/generations`, {
-    method: 'POST',
-    headers: { ...authHeaders(), 'Content-Type': 'application/json' },
-    body: JSON.stringify({ model: config.imageModel, prompt: input.prompt, n: 1, size: input.size }),
-    signal: AbortSignal.timeout(config.requestTimeoutMs),
-  })
-}
-
-async function callEdit(input: ProviderInput): Promise<Response> {
-  const body = new FormData()
-  body.set('model', config.imageModel)
-  body.set('prompt', input.prompt)
-  body.set('n', '1')
-  body.set('size', input.size)
-  input.references.forEach((file) => {
-    const bytes = Uint8Array.from(file.buffer)
-    body.append('image', new Blob([bytes], { type: file.mimetype }), file.originalname)
-  })
-
-  return fetch(`${config.imageApiBaseUrl}/v1/images/edits`, {
-    method: 'POST',
-    headers: authHeaders(),
-    body,
-    signal: AbortSignal.timeout(config.requestTimeoutMs),
-  })
-}
-
-function extensionFromContentType(contentType: string | null): string {
-  if (contentType?.includes('jpeg')) return 'jpg'
-  if (contentType?.includes('webp')) return 'webp'
+function extensionFromBytes(bytes: Buffer): 'png' | 'jpg' | 'webp' {
+  if (bytes.subarray(0, 3).equals(Buffer.from([0xff, 0xd8, 0xff]))) return 'jpg'
+  if (bytes.subarray(0, 4).toString() === 'RIFF') return 'webp'
   return 'png'
 }
 
 async function readLimitedImage(response: Response): Promise<Buffer> {
   const limit = 24 * 1024 * 1024
   const declared = Number(response.headers.get('content-length') || 0)
-  if (declared > limit) throw new Error('中转站图片超过允许大小')
+  if (declared > limit) throw new Error('生成图片超过允许大小')
   const chunks: Buffer[] = []
   let length = 0
-  if (!response.body) throw new Error('中转站图片内容为空')
+  if (!response.body) throw new Error('生成图片内容为空')
   const reader = response.body.getReader()
   try {
     while (true) {
@@ -71,60 +42,49 @@ async function readLimitedImage(response: Response): Promise<Buffer> {
       if (done) break
       const buffer = Buffer.from(value)
       length += buffer.length
-      if (length > limit) throw new Error('中转站图片超过允许大小')
+      if (length > limit) throw new Error('生成图片超过允许大小')
       chunks.push(buffer)
     }
   } finally {
     reader.releaseLock()
   }
   const image = Buffer.concat(chunks)
-  if (!isSupportedImage(image)) throw new Error('中转站返回的不是支持的图片格式')
+  if (!isSupportedImage(image)) throw new Error('供应商返回了不支持的图片格式')
   return image
 }
 
-async function persistProviderImage(image: ProviderImage, username: string): Promise<{ id: string; imageUrl: string }> {
+async function persistProviderImage(output: ProviderOutput, username: string): Promise<{ id: string; imageUrl: string }> {
   if (!/^[a-z][a-z0-9_-]{1,30}$/.test(username)) throw new Error('受邀账号格式错误')
   const id = randomUUID()
   const outputDir = path.resolve(config.generatedDir, username)
   await mkdir(outputDir, { recursive: true, mode: 0o700 })
 
-  if (image.b64_json) {
-    const filename = `${id}.png`
-    if (image.b64_json.length > 34 * 1024 * 1024) throw new Error('中转站图片超过允许大小')
-    const bytes = Buffer.from(image.b64_json, 'base64')
-    if (!isSupportedImage(bytes)) throw new Error('中转站返回的不是支持的图片格式')
-    await writeFile(path.join(outputDir, filename), bytes, { mode: 0o600 })
-    return { id, imageUrl: `/generated/${filename}` }
-  }
-
-  if (image.url) {
-    const imageUrl = new URL(image.url)
-    const providerHost = new URL(config.imageApiBaseUrl).hostname.toLowerCase()
-    if (imageUrl.protocol !== 'https:' || ![providerHost, ...config.imageDownloadHosts].includes(imageUrl.hostname.toLowerCase())) {
-      throw new Error('中转站图片下载域名未列入允许清单')
+  let bytes: Buffer
+  if (output.image.b64_json) {
+    if (output.image.b64_json.length > 34 * 1024 * 1024) throw new Error('生成图片超过允许大小')
+    bytes = Buffer.from(output.image.b64_json, 'base64')
+    if (!isSupportedImage(bytes)) throw new Error('供应商返回了不支持的图片格式')
+  } else if (output.image.url) {
+    const imageUrl = new URL(output.image.url)
+    if (imageUrl.protocol !== 'https:' || !output.allowedDownloadHosts.includes(imageUrl.hostname.toLowerCase())) {
+      throw new Error('供应商图片下载域名未列入允许清单')
     }
     const response = await fetch(imageUrl, { signal: AbortSignal.timeout(120_000), redirect: 'error' })
-    if (!response.ok) throw new Error('中转站返回了图片地址，但下载图片失败')
-    const extension = extensionFromContentType(response.headers.get('content-type'))
-    const filename = `${id}.${extension}`
-    await writeFile(path.join(outputDir, filename), await readLimitedImage(response), { mode: 0o600 })
-    return { id, imageUrl: `/generated/${filename}` }
+    if (!response.ok) throw new Error('供应商返回了图片地址，但下载图片失败')
+    bytes = await readLimitedImage(response)
+  } else {
+    throw new Error('供应商响应中没有找到图片数据')
   }
 
-  throw new Error('中转站响应中没有找到图片数据')
+  const filename = `${id}.${extensionFromBytes(bytes)}`
+  await writeFile(path.join(outputDir, filename), bytes, { mode: 0o600 })
+  return { id, imageUrl: `/generated/${filename}` }
 }
 
-export async function generateWithProvider(input: ProviderInput, username: string): Promise<{ id: string; imageUrl: string }> {
-  if (!config.imageApiKey) throw new Error('尚未配置 IMAGE_API_KEY，请先填写本机 .env')
-
-  const response = input.references.length > 0 ? await callEdit(input) : await callGeneration(input)
-  if (!response.ok) {
-    const detail = (await response.text()).slice(0, 500)
-    throw new Error(`中转站请求失败（HTTP ${response.status}）：${detail}`)
-  }
-
-  const payload = (await response.json()) as ProviderResponse
-  const image = payload.data?.[0]
-  if (!image) throw new Error('中转站响应格式异常：缺少 data[0]')
-  return persistProviderImage(image, username)
+export async function generateWithProvider(input: ProviderInput, username: string): Promise<{ id: string; imageUrl: string; provider: string; model: string }> {
+  const { generateWithRelay } = await import('./providers/relay.ts')
+  const { generateWithAlibaba } = await import('./providers/alibaba.ts')
+  const output = config.imageProvider === 'alibaba' ? await generateWithAlibaba(input) : await generateWithRelay(input)
+  const saved = await persistProviderImage(output, username)
+  return { ...saved, provider: output.provider, model: output.model }
 }

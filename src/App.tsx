@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { lazy, Suspense, useMemo, useState } from 'react'
 import { ReferenceUploader } from './components/ReferenceUploader'
 import { ResultPanel } from './components/ResultPanel'
 import { generateImage } from './lib/api'
@@ -16,6 +16,7 @@ const aspects: Array<{ id: Aspect; title: string; caption: string }> = [
   { id: 'square', title: '方形', caption: '1024 × 1024' },
   { id: 'portrait', title: '竖版', caption: '1024 × 1536' },
 ]
+const ProjectWorkspace = lazy(() => import('./components/ProjectWorkspace').then((module) => ({ default: module.ProjectWorkspace })))
 
 export function App() {
   const [prompt, setPrompt] = useState('')
@@ -140,6 +141,7 @@ export function App() {
             </div>
           </section>
         )}
+        <Suspense fallback={<p>正在载入可编辑工作台…</p>}><ProjectWorkspace /></Suspense>
       </main>
 
       <footer><span>墙绘工坊 MVP · 效果图用于方向沟通</span><span>生产深化能力正在真实案例中验证</span></footer>

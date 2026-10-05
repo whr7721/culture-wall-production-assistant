@@ -8,6 +8,8 @@ export interface GenerationResult {
   style: StylePreset
   aspect: Aspect
   createdAt: string
+  provider?: string
+  model?: string
 }
 
 export interface ApiErrorBody {

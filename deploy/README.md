@@ -10,6 +10,7 @@
 - `/opt/culture-wall/releases/<commit>`：每次发布的代码与依赖；
 - `/opt/culture-wall/current`：当前版本链接；
 - `/var/lib/culture-wall/generated/<受邀账号>`：按账号隔离、持久化的生成图片；
+- `/var/lib/culture-wall/projects/<受邀账号>`：按账号隔离、持久化的项目与上传素材；
 - `/var/lib/culture-wall/usage.json`：持久化试用额度；
 - `/etc/culture-wall/culture-wall.env`：服务端中转站配置；
 - `/etc/culture-wall/invites.json`：受邀用户密码哈希和额度；
