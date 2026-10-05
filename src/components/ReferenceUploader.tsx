@@ -1,4 +1,4 @@
-import { useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 interface Props {
   files: File[]
@@ -7,9 +7,18 @@ interface Props {
 
 export function ReferenceUploader({ files, onChange }: Props) {
   const inputRef = useRef<HTMLInputElement>(null)
+  const [previews, setPreviews] = useState<string[]>([])
+  const [notice, setNotice] = useState('')
+
+  useEffect(() => {
+    const urls = files.map((file) => URL.createObjectURL(file))
+    setPreviews(urls)
+    return () => urls.forEach((url) => URL.revokeObjectURL(url))
+  }, [files])
 
   const addFiles = (incoming: File[]) => {
-    const images = incoming.filter((file) => file.type.startsWith('image/'))
+    const images = incoming.filter((file) => ['image/png', 'image/jpeg', 'image/webp'].includes(file.type) && file.size <= 12 * 1024 * 1024)
+    setNotice(images.length !== incoming.length ? '仅接受单张不超过 12 MB 的 PNG、JPEG 或 WebP 图片。' : '')
     onChange([...files, ...images].slice(0, 3))
   }
 
@@ -42,12 +51,14 @@ export function ReferenceUploader({ files, onChange }: Props) {
         type="file"
         accept="image/png,image/jpeg,image/webp"
         multiple
-        onChange={(event) => addFiles(Array.from(event.target.files ?? []))}
+        onChange={(event) => { addFiles(Array.from(event.target.files ?? [])); event.target.value = '' }}
       />
+      {notice && <small className="validation-copy">{notice}</small>}
       {files.length > 0 && (
         <div className="file-list">
           {files.map((file, index) => (
-            <div className="file-pill" key={`${file.name}-${file.lastModified}`}>
+            <div className="file-pill" key={`${file.name}-${file.lastModified}-${index}`}>
+              <div className="file-thumb-wrap">{previews[index] && <img className="file-thumb" src={previews[index]} alt={`${file.name} 缩略图`} />}</div>
               <span>{index === 0 ? '墙面/主参考' : `参考 ${index + 1}`}</span>
               <strong title={file.name}>{file.name}</strong>
               <button

@@ -5,6 +5,8 @@ interface GenerateInput {
   style: StylePreset
   aspect: Aspect
   references: File[]
+  size?: string
+  shortTitle?: string
 }
 
 export async function generateImage(input: GenerateInput): Promise<GenerationResult> {
@@ -12,6 +14,8 @@ export async function generateImage(input: GenerateInput): Promise<GenerationRes
   form.set('prompt', input.prompt)
   form.set('style', input.style)
   form.set('aspect', input.aspect)
+  if (input.size) form.set('size', input.size)
+  if (input.shortTitle) form.set('shortTitle', input.shortTitle)
   input.references.forEach((file) => form.append('references', file))
 
   const response = await fetch('/api/generations', {

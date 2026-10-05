@@ -3,6 +3,7 @@ import { ReferenceUploader } from './components/ReferenceUploader'
 import { ResultPanel } from './components/ResultPanel'
 import { generateImage } from './lib/api'
 import { loadHistory, saveHistory } from './lib/history'
+import { validateCustomImageSize } from '../shared/imageSize'
 import type { Aspect, GenerationResult, StylePreset } from './types'
 
 const styles: Array<{ id: StylePreset; title: string; caption: string }> = [
@@ -15,6 +16,7 @@ const aspects: Array<{ id: Aspect; title: string; caption: string }> = [
   { id: 'landscape', title: '横版', caption: '1536 × 1024' },
   { id: 'square', title: '方形', caption: '1024 × 1024' },
   { id: 'portrait', title: '竖版', caption: '1024 × 1536' },
+  { id: 'custom', title: '自定义', caption: '填写宽 × 高像素' },
 ]
 const ProjectWorkspace = lazy(() => import('./components/ProjectWorkspace').then((module) => ({ default: module.ProjectWorkspace })))
 
@@ -22,20 +24,24 @@ export function App() {
   const [prompt, setPrompt] = useState('')
   const [style, setStyle] = useState<StylePreset>('brand')
   const [aspect, setAspect] = useState<Aspect>('landscape')
+  const [customWidth, setCustomWidth] = useState(1536)
+  const [customHeight, setCustomHeight] = useState(1024)
+  const [shortTitle, setShortTitle] = useState('')
   const [references, setReferences] = useState<File[]>([])
   const [result, setResult] = useState<GenerationResult | null>(null)
   const [history, setHistory] = useState<GenerationResult[]>(loadHistory)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
 
-  const canSubmit = useMemo(() => prompt.trim().length >= 10 && !isLoading, [prompt, isLoading])
+  const customSize = validateCustomImageSize(customWidth, customHeight)
+  const canSubmit = useMemo(() => prompt.trim().length >= 10 && !isLoading && (aspect !== 'custom' || Boolean(customSize)), [prompt, isLoading, aspect, customSize])
 
   const submit = async () => {
     if (!canSubmit) return
     setError('')
     setIsLoading(true)
     try {
-      const next = await generateImage({ prompt: prompt.trim(), style, aspect, references })
+      const next = await generateImage({ prompt: prompt.trim(), style, aspect, references, size: aspect === 'custom' ? customSize || undefined : undefined, shortTitle: shortTitle.trim() })
       const nextHistory = [next, ...history.filter((item) => item.id !== next.id)].slice(0, 8)
       setResult(next)
       setHistory(nextHistory)
@@ -66,7 +72,7 @@ export function App() {
           <span className="brand-mark"><i /><i /><i /></span>
           <span><strong>墙绘工坊</strong><small>CULTURE WALL STUDIO</small></span>
         </a>
-        <div className="header-note"><span>受邀试用版</span> · 上传素材会发送至第三方生图服务</div>
+        <div className="header-note"><span>受邀试用版</span> · 点击生成时参考图会发送至第三方生图服务</div>
       </header>
 
       <main id="top">
@@ -93,6 +99,9 @@ export function App() {
                 placeholder="例如：为科技园区大厅设计一面 8 米宽的企业文化墙，深蓝与银灰配色，左侧品牌故事，中部发展历程，右侧核心价值观……"
               />
               <div className="prompt-tips"><span>建议包含</span><b>墙体结构</b><b>行业</b><b>主要内容</b><b>材质/色彩</b></div>
+              <label className="short-title-field" htmlFor="short-title">效果图中唯一需要尝试绘制的短标题（可不填）</label>
+              <input id="short-title" value={shortTitle} maxLength={16} onChange={(event) => setShortTitle(event.target.value)} placeholder="例如：创新引领未来" />
+              <small className="field-help">不填时尽量生成无字效果图；长段准确文案请在下方可编辑正视稿中添加。提示词不能保证汉字完全正确。</small>
             </div>
 
             <ReferenceUploader files={references} onChange={setReferences} />
@@ -110,13 +119,19 @@ export function App() {
 
             <div className="field-group compact">
               <div className="field-heading"><div><span className="step-number">04</span><label>画面方向</label></div></div>
-              <div className="option-grid three">
+              <div className="option-grid four">
                 {aspects.map((item) => (
                   <button key={item.id} className={`aspect-card ${aspect === item.id ? 'selected' : ''}`} type="button" onClick={() => setAspect(item.id)}>
                     <i className={`ratio-icon ${item.id}`} /><span><strong>{item.title}</strong><small>{item.caption}</small></span>
                   </button>
                 ))}
               </div>
+              {aspect === 'custom' && <div className="custom-size-fields">
+                <label>宽度 px<input aria-label="自定义宽度" type="number" min="512" max="2048" step="16" value={customWidth} onChange={(event) => setCustomWidth(Number(event.target.value))}/></label>
+                <span>×</span>
+                <label>高度 px<input aria-label="自定义高度" type="number" min="512" max="2048" step="16" value={customHeight} onChange={(event) => setCustomHeight(Number(event.target.value))}/></label>
+              </div>}
+              {aspect === 'custom' && <small className={customSize ? 'field-help' : 'validation-copy'}>宽高需为 512—2048 px、16 的倍数，比例不超过 3:1，像素总数不少于 655360。更大尺寸可能增加耗时与费用。中转站实际兼容性尚未实测；若拒绝请求，已受理的尝试仍可能计入试用额度。</small>}
             </div>
 
             <button className="generate-button" type="button" disabled={!canSubmit} onClick={submit}>

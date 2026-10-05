@@ -1,4 +1,6 @@
-export type Aspect = 'landscape' | 'square' | 'portrait'
+import type { ImageAspect } from '../shared/imageSize'
+
+export type Aspect = ImageAspect
 export type StylePreset = 'brand' | 'technology' | 'humanistic'
 
 export interface GenerationResult {
@@ -7,6 +9,7 @@ export interface GenerationResult {
   prompt: string
   style: StylePreset
   aspect: Aspect
+  requestedSize?: string
   createdAt: string
   provider?: string
   model?: string
