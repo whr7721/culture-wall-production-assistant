@@ -33,6 +33,7 @@ try {
   await page.locator('.project-controls input[type=file]').setInputFiles({ name: 'logo-test.png', mimeType: 'image/png', buffer: Buffer.from(imageData, 'base64') })
   await page.getByText('素材已上传').waitFor()
   await page.getByLabel('添加图片素材').selectOption({ label: 'logo-test.png' })
+  await page.locator('.selected-editor input[type=number]').first().fill('2000')
   await page.getByRole('button', { name: '保存项目' }).click()
   await page.getByText('已保存到服务器').waitFor()
   await page.reload({ waitUntil: 'networkidle' })
@@ -46,7 +47,7 @@ try {
   const svgPath = path.join(directory, 'draft.svg')
   await svg.saveAs(svgPath)
   const svgContent = await readFile(svgPath, 'utf8')
-  if (!svgContent.includes('准确文案') || !svgContent.includes('3500mm')) throw new Error('SVG 内容或实测尺寸缺失')
+  if (!svgContent.includes('准确文案') || !svgContent.includes('3500mm') || !svgContent.includes('x="2000"')) throw new Error('SVG 内容、素材位置或实测尺寸缺失')
   const psdEvent = page.waitForEvent('download')
   await page.getByRole('button', { name: '下载分层 PSD' }).click()
   const psd = await psdEvent
