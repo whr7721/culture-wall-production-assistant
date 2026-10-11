@@ -1,6 +1,12 @@
 import { writePsd } from 'ag-psd'
 import type { Layer } from 'ag-psd'
 import type { Project, WallElement } from './projects'
+import { elementSvg } from '../../shared/elementSvg'
+
+export function downloadElementSvg(item: WallElement) {
+  const name = (item.kind === 'text' ? item.text : item.label).replace(/[\\/:*?"<>|]/g, '_').slice(0, 40) || '元素'
+  download(new Blob([elementSvg(item)], { type: 'image/svg+xml' }), `${name}-独立设计资产.svg`)
+}
 
 function download(blob: Blob, name: string) {
   const url = URL.createObjectURL(blob)
