@@ -13,6 +13,7 @@ const elementBase = z.object({
   id: uuid, x: coordinate, y: coordinate, width: positive, height: positive,
 })
 const elementSchema = z.discriminatedUnion('kind', [
+  elementBase.extend({ kind: z.literal('path'), d: z.string().min(1).max(50000).regex(/^[MmLlHhVvCcSsQqTtAaZz0-9eE+.,\s-]+$/), sourceX: z.number().finite(), sourceY: z.number().finite(), sourceWidth: positive, sourceHeight: positive, fill: z.string().regex(/^(#[0-9a-fA-F]{6}|none)$/), stroke: z.string().regex(/^(#[0-9a-fA-F]{6}|none)$/), strokeWidth: z.number().finite().min(0).max(1000), label: z.string().max(80) }),
   elementBase.extend({ kind: z.literal('rect'), fill: color, label: z.string().max(80).default('装饰') }),
   elementBase.extend({ kind: z.literal('text'), text: z.string().max(1200), fontSizeMm: positive.max(300), color }),
   elementBase.extend({ kind: z.literal('image'), assetId: uuid, label: z.string().max(80).default('图片') }),

@@ -54,6 +54,7 @@ export async function downloadSvg(project: Project): Promise<void> {
     `<metadata>原始项目 ${xml(project.id)}；实测尺寸 ${project.widthMm} × ${project.heightMm} mm；并非生产文件</metadata>`,
     `<rect width="${project.widthMm}" height="${project.heightMm}" fill="#ffffff"/>`]
   for (const item of project.elements) {
+    if (item.kind === 'path') parts.push(`<g transform="translate(${item.x} ${item.y})">${elementSvg(item).replace(/^<svg[^>]*>/, '').replace(/<\/svg>$/, '')}</g>`)
     if (item.kind === 'rect') parts.push(`<rect id="e-${item.id}" x="${item.x}" y="${item.y}" width="${item.width}" height="${item.height}" fill="${item.fill}"/>`)
     if (item.kind === 'text') {
       const lines = item.text.split('\n').map((line, index) => `<tspan x="${item.x}" dy="${index ? item.fontSizeMm * 1.2 : 0}">${xml(line)}</tspan>`).join('')
@@ -100,7 +101,7 @@ export async function downloadPsd(project: Project): Promise<void> {
   for (const item of project.elements) {
     const layerCanvas = canvas(width, height)
     const context = layerCanvas.getContext('2d')!
-    const image = item.kind === 'image' ? await loadImage(await assetDataUrl(assetFor(project, item.assetId).url)) : undefined
+    const image = item.kind === 'image' ? await loadImage(await assetDataUrl(assetFor(project, item.assetId).url)) : item.kind === 'path' ? await loadImage(`data:image/svg+xml;charset=utf-8,${encodeURIComponent(elementSvg(item))}`) : undefined
     drawItem(context, item, scale, image)
     drawItem(compositeContext, item, scale, image)
     layers.unshift({ name: item.kind === 'text' ? `文字（源文件可修改）：${item.text.slice(0, 20)}` : item.kind === 'image' ? `图片：${item.label}` : `装饰：${item.label}`, canvas: layerCanvas })
@@ -122,7 +123,7 @@ export async function downloadPreview(project: Project): Promise<void> {
   context.fillStyle = '#ffffff'
   context.fillRect(0, 0, result.width, result.height)
   for (const item of project.elements) {
-    const image = item.kind === 'image' ? await loadImage(await assetDataUrl(assetFor(project, item.assetId).url)) : undefined
+    const image = item.kind === 'image' ? await loadImage(await assetDataUrl(assetFor(project, item.assetId).url)) : item.kind === 'path' ? await loadImage(`data:image/svg+xml;charset=utf-8,${encodeURIComponent(elementSvg(item))}`) : undefined
     drawItem(context, item, scale, image)
   }
   await new Promise<void>((resolve, reject) => result.toBlob((blob) => { if (!blob) { reject(new Error('预览导出失败')); return }; download(blob, filename(project, 'png')); resolve() }, 'image/png'))

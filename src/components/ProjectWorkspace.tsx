@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
-import { Canvas, FabricImage, Rect, Textbox } from 'fabric'
+import { Canvas, FabricImage, Rect, Textbox, Path } from 'fabric'
+import { importSvgPaths } from '../lib/importSvg'
 import { createProject, getProject, listProjects, saveProject, uploadAsset, type Project, type ProjectRow, type WallElement } from '../lib/projects'
 import { downloadPreview, downloadPsd, downloadSvg, downloadElementSvg } from '../lib/exports'
 import type { GenerationResult } from '../types'
@@ -99,8 +100,9 @@ export function ProjectWorkspace({ importRequest }: { importRequest: { token: st
     let cancelled = false
     const add = async (item: WallElement) => {
       const common = { left: item.x * scale, top: item.y * scale, originX: 'left' as const, originY: 'top' as const, selectable: true, lockRotation: true }
-      let object: Rect | Textbox | FabricImage
-      if (item.kind === 'rect') object = new Rect({ ...common, width: item.width * scale, height: item.height * scale, fill: item.fill })
+      let object: Rect | Textbox | FabricImage | Path
+      if (item.kind === 'path') object = new Path(item.d, { ...common, fill: item.fill, stroke: item.stroke === 'none' ? null : item.stroke, strokeWidth: item.strokeWidth, scaleX: item.width * scale / item.sourceWidth, scaleY: item.height * scale / item.sourceHeight })
+      else if (item.kind === 'rect') object = new Rect({ ...common, width: item.width * scale, height: item.height * scale, fill: item.fill })
       else if (item.kind === 'text') object = new Textbox(item.text || '文字', { ...common, width: item.width * scale, fontSize: item.fontSizeMm * scale, fill: item.color, fontFamily: 'Arial', editable: false, lockScalingY: true })
       else {
         const asset = project.assets.find((asset) => asset.id === item.assetId)
@@ -164,6 +166,8 @@ export function ProjectWorkspace({ importRequest }: { importRequest: { token: st
         {project.obstacles.map((item) => <div key={item.id} className="element-row"><input aria-label="障碍物名称" value={item.label} onChange={(event) => mutate({ obstacles: project.obstacles.map((o) => o.id === item.id ? { ...o, label: event.target.value } : o) })}/>{fields.map((field) => <input key={field} aria-label={field} type="number" title={field} value={item[field]} onChange={(event) => mutate({ obstacles: project.obstacles.map((o) => o.id === item.id ? { ...o, [field]: number(event.target.value, o[field]) } : o) })}/>)}<button type="button" onClick={() => mutate({ obstacles: project.obstacles.filter((o) => o.id !== item.id) })}>×</button></div>)}
         <button type="button" onClick={() => mutate({ obstacles: [...project.obstacles, { id: uid(), label: '门/缺口', x: 100, y: 100, width: 500, height: 800 }] })}>添加门／缺口</button>
         <h3>素材（图片会保存在服务器）</h3>
+        <label>导入SVG独立路径（实验）<input aria-label="导入SVG独立路径" type="file" accept=".svg,image/svg+xml" disabled={busy} onChange={(event) => { const file = event.target.files?.[0]; if (file) void perform(async () => { if (file.size > 100000) throw new Error('SVG需小于100KB'); const elements = await importSvgPaths(await file.text(), Math.min(1000, project.widthMm)); if (!elements.length) throw new Error('SVG没有可导入路径'); if (project.elements.length + elements.length > 120) throw new Error('项目元素数量超限'); mutate({ elements: [...project.elements, ...elements] }); setSelected(elements[0].id); setMessage(`导入${elements.length}个独立路径，可分别移动、缩放、改色和导出；请保存项目。`) }); event.target.value = '' }}/></label>
+        <p className="tiny-note">首轮仅支持带viewBox的纯色path；不支持变换、渐变、图片或文本，请先在原软件展开。默认导入总宽1000mm，可逐对象调整；暂不支持节点编辑或分组。</p>
         <input type="file" accept="image/png,image/jpeg,image/webp" onChange={(event) => { const file = event.target.files?.[0]; if (file) void perform(async () => { const saved = await save(project); const result = await uploadAsset(saved, file); setProject(result.project); setMessage('素材已上传，只有此受邀账号可读取。') }); event.target.value = '' }}/>
         {project.assets.map((asset) => <label key={asset.id} className="asset-row"><input type="checkbox" checked={selectedAssets.includes(asset.id)} onChange={(event) => setSelectedAssets(event.target.checked ? [...selectedAssets, asset.id].slice(0, 3) : selectedAssets.filter((id) => id !== asset.id))}/><img src={asset.url} alt="素材缩略图"/><span>{asset.name}</span></label>)}
         <p className="tiny-note">工作台不重复调用生图。请在上方生成并通过“进入工作台”带入结果；素材在此用于添加图片对象。</p>

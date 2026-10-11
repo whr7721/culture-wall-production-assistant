@@ -1,13 +1,14 @@
-type Element = { id: string; kind: string; width: number; height: number; text?: string; fontSizeMm?: number; color?: string; fill?: string }
+type Element = { id: string; kind: string; width: number; height: number; text?: string; fontSizeMm?: number; color?: string; fill?: string; d?: string; sourceX?: number; sourceY?: number; sourceWidth?: number; sourceHeight?: number; stroke?: string; strokeWidth?: number }
 const escapeXml = (value: string) => value.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&apos;')
 
 // Local coordinates preserve physical size, not the element's position on the wall.
 // Raster images are deliberately rejected: an SVG wrapper is not vectorization.
 export function elementSvg(item: Element): string {
-  if (!['text', 'rect'].includes(item.kind)) throw new Error('图片尚未矢量化，不能作为独立矢量导出')
+  if (!['text', 'rect', 'path'].includes(item.kind)) throw new Error('图片尚未矢量化，不能作为独立矢量导出')
   if (![item.width, item.height].every((value) => Number.isFinite(value) && value > 0)) throw new Error('元素尺寸无效')
   let body = ''
-  if (item.kind === 'rect') body = `<rect width="${item.width}" height="${item.height}" fill="${escapeXml(item.fill || '#000000')}"/>`
+  if (item.kind === 'path') body = `<g transform="scale(${item.width / item.sourceWidth!} ${item.height / item.sourceHeight!})"><path transform="translate(${-item.sourceX!} ${-item.sourceY!})" d="${escapeXml(item.d!)}" fill="${escapeXml(item.fill || 'none')}" stroke="${escapeXml(item.stroke || 'none')}" stroke-width="${item.strokeWidth || 0}"/></g>`
+  else if (item.kind === 'rect') body = `<rect width="${item.width}" height="${item.height}" fill="${escapeXml(item.fill || '#000000')}"/>`
   else {
     const font = item.fontSizeMm!
     if (!Number.isFinite(font) || font <= 0) throw new Error('文字字号无效')
