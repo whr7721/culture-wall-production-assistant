@@ -16,6 +16,13 @@ try {
   const page = await context.newPage()
   let submittedBody = ''
   let mockImageUrl = ''
+  if (process.env.MOCK_IMAGE_MODELS === '1') {
+    await page.route('**/api/generations/models', (route) => route.fulfill({ json: { models: [
+      { id: 'default', label: '模拟 Image', available: true, detail: '仅测试' },
+      { id: 'kami-banana', label: '模拟 Banana', available: true, detail: '仅测试' },
+      { id: 'kami-banana-4k', label: '模拟 Banana 4K', available: true, detail: '仅测试' },
+    ] } }))
+  }
   await page.route('**/api/generations', async (route) => {
     submittedBody = route.request().postData() || ''
     await route.fulfill({
@@ -42,7 +49,7 @@ try {
     }
     await page.locator('#image-model').selectOption('default')
   }
-  await page.locator('textarea').fill('为科技企业设计一面蓝白色文化墙，左侧品牌故事，右侧核心价值观。')
+  await page.locator('#prompt').fill('为科技企业设计一面蓝白色文化墙，左侧品牌故事，右侧核心价值观。')
   await page.locator('#short-title').fill('创新引领未来')
   const imageData = await page.evaluate(() => {
     const canvas = document.createElement('canvas')

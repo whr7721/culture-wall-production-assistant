@@ -8,6 +8,10 @@ interface GenerateInput {
   size?: string
   shortTitle?: string
   modelChoice?: ImageModelChoice
+  task?: 'space' | 'flat'
+  exactCopy?: string
+  wallWidthMm?: number
+  wallHeightMm?: number
 }
 
 export async function getImageModels(): Promise<ImageModelOption[]> {
@@ -22,6 +26,10 @@ export async function generateImage(input: GenerateInput): Promise<GenerationRes
   form.set('prompt', input.prompt)
   form.set('style', input.style)
   form.set('aspect', input.aspect)
+  if (input.task) form.set('task', input.task)
+  if (input.exactCopy) form.set('exactCopy', input.exactCopy)
+  if (input.wallWidthMm) form.set('wallWidthMm', String(input.wallWidthMm))
+  if (input.wallHeightMm) form.set('wallHeightMm', String(input.wallHeightMm))
   if (input.size) form.set('size', input.size)
   if (input.shortTitle) form.set('shortTitle', input.shortTitle)
   if (input.modelChoice) form.set('modelChoice', input.modelChoice)

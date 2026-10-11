@@ -12,6 +12,10 @@ export interface GenerationResult {
   style: StylePreset
   aspect: Aspect
   requestedSize?: string
+  task?: 'space' | 'flat'
+  exactCopy?: string
+  wallWidthMm?: number
+  wallHeightMm?: number
   createdAt: string
   provider?: string
   model?: string

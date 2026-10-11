@@ -140,6 +140,13 @@ textarea::placeholder { color: #9a9b94; }
 footer { margin-top: 40px; padding: 26px 0 34px; border-top: 1px solid var(--line); display: flex; justify-content: space-between; color: var(--muted); font-size: 10px; }
 
 .project-workspace { padding: 42px 0; border-top: 1px solid var(--line); }
+.planner-panel summary { cursor: pointer; font-weight: 600; }
+.planner-panel > label { display: block; margin: 10px 0; font-size: 12px; }
+.planner-panel input[type='checkbox'] { width: auto; margin-right: 6px; }
+.planner-panel button { margin: 8px 8px 0 0; padding: 8px 10px; border: 1px solid var(--line); background: white; cursor: pointer; }
+.planner-panel button:disabled { opacity: .5; cursor: not-allowed; }
+.planner-panel p { font-size: 12px; line-height: 1.7; overflow-wrap: anywhere; }
+.planner-panel h4 { margin: 14px 0 4px; }
 .project-toolbar, .button-pair { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0; }
 .project-toolbar > *, .button-pair > * { min-height: 36px; padding: 6px 10px; border: 1px solid var(--line); background: #fff; color: var(--ink); cursor: pointer; }
 .project-toolbar select { min-width: 240px; }

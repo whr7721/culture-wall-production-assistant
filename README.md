@@ -57,6 +57,18 @@ npx tsx scripts/acceptance-project.ts
 - 小范围技术验证记录；
 - 候选功能评分与 MVP 决策门槛。
 
+## Kimi 官方需求整理（新增，默认关闭）
+
+主页参考图上传区域下方新增“先用 Kimi 整理需求”折叠区。读取上方需求、最多三张参考图、另行填写的墙宽/高（毫米）和准确文案；返回分区建议、待确认问题、风险和生图提示词。用户核对后点击应用，再手动点击原有生图按钮。不会自动调用生图，也不会自动转换 SVG、改写工作台尺寸或生成施工文件。
+
+在服务端 `.env` 中填写 `KIMI_API_KEY`，默认模型 `KIMI_MODEL=kimi-k2.5`；确认测试费用后设置 `KIMI_ENABLED=1` 并重启后端。使用 Kimi 开放平台标准 API Key，不是 Kimi Code 订阅凭据。请求固定发送至 `https://api.moonshot.cn/v1/chat/completions`；密钥不会进入前端。**当前只完成模拟验收，尚未验证账户模型可用性与真实参数兼容性。**
+
+需求整理使用独立的 `PLANNER_DAILY_LIMIT` / `PLANNER_TOTAL_LIMIT` / `PLANNER_USAGE_FILE`，默认每天5次、总20次、全站单并发、同账号30秒间隔。受理后的失败尝试也计数，不自动重试。图片生成的额度和供应商配置保持原样。素材发送需要用户勾选授权；精确文字与尺寸由本站程序保留，不采用模型改写版本。
+
+流程指令位于 `server/prompts/culture-wall-planner.md`，不是自动执行的 Codex Skill。整理结果目前仅存在当前页面，可下载 JSON 备份原文和结果；刷新前请下载。尚未自动保存到项目，页面换图、改尺寸或改文案后旧建议会提示失效。原有生图提示词仍保留短标题限制。
+
+验证：`npm test`、`npm run build`；运行后端后设置 `PLANNER_TEST_URL` 并执行 `npx tsx scripts/acceptance-planner.ts` 可做模拟浏览器验收，不调用付费 API。进度与明日待办见 `docs/progress/2026-10-10-kimi.md`。
+
 ## 安全原则
 
 - 客户原件、生产文件、上传素材和生成结果不提交 Git。

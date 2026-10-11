@@ -6,6 +6,13 @@ function readPositiveNumber(name: string, fallback: number): number {
 }
 
 export const config = {
+  kimiApiKey: process.env.KIMI_API_KEY || '',
+  kimiModel: process.env.KIMI_MODEL || 'kimi-k2.5',
+  kimiEnabled: process.env.KIMI_ENABLED === '1',
+  kimiTimeoutMs: readPositiveNumber('KIMI_TIMEOUT_MS', 90_000),
+  plannerDailyLimit: readPositiveNumber('PLANNER_DAILY_LIMIT', 5),
+  plannerTotalLimit: readPositiveNumber('PLANNER_TOTAL_LIMIT', 20),
+  plannerUsageFile: process.env.PLANNER_USAGE_FILE || 'data/planner-usage.json',
   port: readPositiveNumber('PORT', 8787),
   imageProvider: process.env.IMAGE_PROVIDER === 'alibaba' ? 'alibaba' as const : 'relay' as const,
   imageApiBaseUrl: (process.env.IMAGE_API_BASE_URL || 'https://api.itoo.me').replace(/\/$/, ''),

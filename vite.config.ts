@@ -5,6 +5,7 @@ export default defineConfig({
   plugins: [react()],
   server: {
     port: 5173,
+    watch: { ignored: ['**/case-discovery-kit/cases/**'] },
     proxy: {
       '/api': 'http://127.0.0.1:8787',
       '/generated': 'http://127.0.0.1:8787',

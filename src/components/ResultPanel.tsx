@@ -5,9 +5,11 @@ interface Props {
   isLoading: boolean
   error: string
   onUseAsReference: (result: GenerationResult) => void
+  onFlatten: (result: GenerationResult) => void
+  onOpenWorkspace: (result: GenerationResult) => void
 }
 
-export function ResultPanel({ result, isLoading, error, onUseAsReference }: Props) {
+export function ResultPanel({ result, isLoading, error, onUseAsReference, onFlatten, onOpenWorkspace }: Props) {
   return (
     <section className="result-panel">
       <div className="result-topline">
@@ -50,11 +52,15 @@ export function ResultPanel({ result, isLoading, error, onUseAsReference }: Prop
           <button className="secondary-button" type="button" onClick={() => onUseAsReference(result)}>
             作为参考继续修改
           </button>
+          <button className="secondary-button" type="button" onClick={() => onFlatten(result)}>
+            准备转二维正视图
+          </button>
+          <button className="secondary-button" type="button" onClick={() => onOpenWorkspace(result)}>进入工作台</button>
         </div>
       )}
 
       <p className="result-note">
-        当前输出用于方案沟通与获客展示；准确文字、尺寸拆分和生产文件仍需后续设计确认。
+        当前输出是视觉候选图片，不是可编辑 SVG；转换可能改变文字、图形或设备位置，须逐项核对，不能保证一比一或毫米级精度。
       </p>
     </section>
   )

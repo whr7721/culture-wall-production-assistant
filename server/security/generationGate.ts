@@ -19,6 +19,7 @@ export class GateError extends Error {
 }
 
 export class GenerationGate {
+  constructor(private readonly settings: Pick<typeof config, 'usageFile' | 'maxConcurrentGenerations' | 'dailyGenerationLimit' | 'totalGenerationLimit' | 'minGenerationIntervalMs'> = config) {}
   private queue: Promise<unknown> = Promise.resolve()
   private active = 0
 
@@ -30,7 +31,7 @@ export class GenerationGate {
 
   private async loadUsage(): Promise<Usage> {
     try {
-      return JSON.parse(await readFile(path.resolve(config.usageFile), 'utf8')) as Usage
+      return JSON.parse(await readFile(path.resolve(this.settings.usageFile), 'utf8')) as Usage
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code === 'ENOENT') return {}
       throw error
@@ -38,7 +39,7 @@ export class GenerationGate {
   }
 
   private async saveUsage(usage: Usage): Promise<void> {
-    const file = path.resolve(config.usageFile)
+    const file = path.resolve(this.settings.usageFile)
     await mkdir(path.dirname(file), { recursive: true })
     const temporary = `${file}.tmp`
     await writeFile(temporary, JSON.stringify(usage, null, 2), { mode: 0o600 })
@@ -47,17 +48,17 @@ export class GenerationGate {
 
   async acquire(invite: Pick<InviteRecord, 'username' | 'dailyLimit' | 'totalLimit'>): Promise<() => void> {
     return this.serialize(async () => {
-      if (this.active >= config.maxConcurrentGenerations) throw new GateError('当前已有生成任务，请稍后再试', 30)
+      if (this.active >= this.settings.maxConcurrentGenerations) throw new GateError('当前已有生成任务，请稍后再试', 30)
       const usage = await this.loadUsage()
       const now = Date.now()
       const day = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Shanghai', year: 'numeric', month: '2-digit', day: '2-digit' }).format(now)
       const previous = usage[invite.username] || { day, daily: 0, total: 0, lastAt: 0 }
       const daily = previous.day === day ? previous.daily : 0
-      const dailyLimit = invite.dailyLimit || config.dailyGenerationLimit
-      const totalLimit = invite.totalLimit || config.totalGenerationLimit
+      const dailyLimit = invite.dailyLimit || this.settings.dailyGenerationLimit
+      const totalLimit = invite.totalLimit || this.settings.totalGenerationLimit
       if (daily >= dailyLimit) throw new GateError('今日试用额度已用完')
       if (previous.total >= totalLimit) throw new GateError('总试用额度已用完')
-      const remaining = config.minGenerationIntervalMs - (now - previous.lastAt)
+      const remaining = this.settings.minGenerationIntervalMs - (now - previous.lastAt)
       if (remaining > 0) throw new GateError(`操作过快，请 ${Math.ceil(remaining / 1000)} 秒后再试`, Math.ceil(remaining / 1000))
       usage[invite.username] = { day, daily: daily + 1, total: previous.total + 1, lastAt: now }
       await this.saveUsage(usage)

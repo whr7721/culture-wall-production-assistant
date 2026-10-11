@@ -6,6 +6,22 @@ export const standardImageSizes = {
 
 export type ImageAspect = keyof typeof standardImageSizes | 'custom'
 
+// Physical dimensions stay in mm; only the ratio is used for the raster request.
+export function imageSizeForWall(widthMm: number, heightMm: number): string | null {
+  if (!Number.isFinite(widthMm) || !Number.isFinite(heightMm) || widthMm <= 0 || heightMm <= 0 || widthMm > 100000 || heightMm > 100000) return null
+  const ratio = widthMm / heightMm
+  if (ratio > 3 || ratio < 1 / 3) return null
+  let best: { size: string; score: number } | undefined
+  for (let width = 512; width <= 2048; width += 16) {
+    const height = Math.round(width / ratio / 16) * 16
+    const size = validateCustomImageSize(width, height)
+    if (!size || width * height > 2_000_000) continue
+    const score = Math.abs(Math.log(width / height / ratio)) + 0.0001 * Math.abs(Math.log(width * height / 1_500_000))
+    if (!best || score < best.score) best = { size, score }
+  }
+  return best?.size || null
+}
+
 // Conservative overlap for the currently configured image routes. A provider can
 // still reject a custom size; the relay's gpt-image-2.5 alias is not an official model ID.
 export function validateCustomImageSize(width: number, height: number): string | null {

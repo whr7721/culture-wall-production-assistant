@@ -4,6 +4,7 @@ import { existsSync } from 'node:fs'
 import { config } from './config.ts'
 import { generationsRouter } from './routes/generations.ts'
 import { projectsRouter } from './routes/projects.ts'
+import { plannerRouter } from './routes/planner.ts'
 import { requireInvite } from './security/invites.ts'
 
 const app = express()
@@ -31,6 +32,7 @@ app.get('/generated/:filename', (request, response) => {
 })
 app.use('/api/generations', generationsRouter)
 app.use('/api/projects', projectsRouter)
+app.use('/api/planner', plannerRouter)
 app.get('/api/health', (_request, response) => {
   response.json({ ok: true, providerConfigured: config.imageProvider === 'alibaba' ? Boolean(config.alibabaApiKey && config.alibabaBaseUrl) : Boolean(config.imageApiKey) })
 })

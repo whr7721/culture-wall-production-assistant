@@ -30,7 +30,7 @@ export const projectSchema = z.object({
   id: uuid, title: z.string().trim().min(1).max(80),
   widthMm: positive.max(50000), heightMm: positive.max(20000),
   measurementStatus: z.enum(['confirmed', 'to_measure']),
-  copy: z.string().max(5000), notes: z.string().max(2000),
+  copy: z.string().max(6000), notes: z.string().max(2000),
   obstacles: z.array(obstacleSchema).max(30), elements: z.array(elementSchema).max(120),
   assets: z.array(assetSchema).max(20), concepts: z.array(conceptSchema).max(30),
   status: z.enum(['draft', 'approved']), revision: z.number().int().min(1),
