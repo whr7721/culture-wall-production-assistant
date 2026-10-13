@@ -32,7 +32,24 @@ export function App() {
   const [modelOptions, setModelOptions] = useState<ImageModelOption[]>([])
   const [workspaceImport, setWorkspaceImport] = useState<{ token: string; result: GenerationResult; widthMm: number; heightMm: number } | null>(null)
 
-  useEffect(() => { void getImageModels().then(setModelOptions).catch(() => setError('模型列表加载失败，请刷新页面。')) }, [])
+  useEffect(() => {
+    let disposed = false
+    let retry: ReturnType<typeof setTimeout> | undefined
+    const loadModels = async () => {
+      try {
+        const models = await getImageModels()
+        if (disposed) return
+        setModelOptions(models)
+        setError((message) => message === '模型列表暂时不可用，正在自动重试。' ? '' : message)
+      } catch {
+        if (disposed) return
+        setError((message) => message || '模型列表暂时不可用，正在自动重试。')
+        retry = setTimeout(() => void loadModels(), 5000)
+      }
+    }
+    void loadModels()
+    return () => { disposed = true; if (retry) clearTimeout(retry) }
+  }, [])
 
   const customSize = imageSizeForWall(Number(wallWidth), Number(wallHeight))
   const ratio = Number(wallWidth) / Number(wallHeight)
