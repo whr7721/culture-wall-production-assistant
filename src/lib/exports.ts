@@ -54,16 +54,20 @@ export async function downloadSvg(project: Project): Promise<void> {
     `<metadata>原始项目 ${xml(project.id)}；实测尺寸 ${project.widthMm} × ${project.heightMm} mm；并非生产文件</metadata>`,
     `<rect width="${project.widthMm}" height="${project.heightMm}" fill="#ffffff"/>`]
   for (const item of project.elements) {
+    // Each project element stays a separate SVG group/object. A group is not
+    // automatically an Illustrator layer or a manufacturing-ready shape.
+    parts.push(`<g id="e-${item.id}">`)
     if (item.kind === 'path') parts.push(`<g transform="translate(${item.x} ${item.y})">${elementSvg(item).replace(/^<svg[^>]*>/, '').replace(/<\/svg>$/, '')}</g>`)
-    if (item.kind === 'rect') parts.push(`<rect id="e-${item.id}" x="${item.x}" y="${item.y}" width="${item.width}" height="${item.height}" fill="${item.fill}"/>`)
+    if (item.kind === 'rect') parts.push(`<rect x="${item.x}" y="${item.y}" width="${item.width}" height="${item.height}" fill="${item.fill}"/>`)
     if (item.kind === 'text') {
       const lines = item.text.split('\n').map((line, index) => `<tspan x="${item.x}" dy="${index ? item.fontSizeMm * 1.2 : 0}">${xml(line)}</tspan>`).join('')
-      parts.push(`<text id="e-${item.id}" x="${item.x}" y="${item.y + item.fontSizeMm}" font-size="${item.fontSizeMm}" fill="${item.color}" font-family="Arial, sans-serif" xml:space="preserve">${lines}</text>`)
+      parts.push(`<text x="${item.x}" y="${item.y + item.fontSizeMm}" font-size="${item.fontSizeMm}" fill="${item.color}" font-family="Arial, sans-serif" xml:space="preserve">${lines}</text>`)
     }
     if (item.kind === 'image') {
       const src = await assetDataUrl(assetFor(project, item.assetId).url)
-      parts.push(`<image id="e-${item.id}" x="${item.x}" y="${item.y}" width="${item.width}" height="${item.height}" preserveAspectRatio="xMidYMid meet" xlink:href="${src}"/>`)
+      parts.push(`<image x="${item.x}" y="${item.y}" width="${item.width}" height="${item.height}" preserveAspectRatio="xMidYMid meet" xlink:href="${src}"/>`)
     }
+    parts.push('</g>')
   }
   parts.push('</svg>')
   download(new Blob([parts.join('\n')], { type: 'image/svg+xml' }), filename(project, 'svg'))

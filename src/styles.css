@@ -201,3 +201,5 @@ footer { margin-top: 40px; padding: 26px 0 34px; border-top: 1px solid var(--lin
   .result-canvas { min-height: 330px; }
   .result-actions, footer { flex-direction: column; }
 }
+.trace-mask-preview { display: block; width: min(100%, 420px); max-height: 320px; object-fit: contain; margin-top: 12px; border: 1px solid #b8c7d0; background: #fff; }
+.trace-source-preview { display: block; max-width: min(100%, 420px); max-height: 320px; width: auto; height: auto; cursor: crosshair; margin: 10px 0; border: 1px solid #b8c7d0; }

@@ -15,22 +15,24 @@
     "test:project-browser": "tsx scripts/acceptance-project.ts"
   },
   "dependencies": {
+    "@visioncortex/vtracer": "1.0.0-alpha.4",
     "dotenv": "^17.2.3",
     "express": "^5.1.0",
     "multer": "^2.0.2",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
+    "sharp": "0.34.4",
     "tsx": "^4.20.6",
     "zod": "^4.6.5"
   },
   "devDependencies": {
-    "ag-psd": "^31.0.2",
     "@types/express": "^5.0.3",
     "@types/multer": "^2.0.0",
     "@types/node": "^24.6.0",
     "@types/react": "^19.1.16",
     "@types/react-dom": "^19.1.9",
     "@vitejs/plugin-react": "^5.0.4",
+    "ag-psd": "^31.0.2",
     "concurrently": "^9.2.1",
     "fabric": "^7.4.0",
     "playwright-core": "^1.63.0",
