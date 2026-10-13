@@ -1,7 +1,7 @@
 import { writePsd } from 'ag-psd'
 import type { Layer } from 'ag-psd'
 import type { Project, WallElement } from './projects'
-import { elementSvg } from '../../shared/elementSvg'
+import { elementSvg, textSvgBody } from '../../shared/elementSvg'
 
 export function downloadElementSvg(item: WallElement) {
   const name = (item.kind === 'text' ? item.text : item.label).replace(/[\\/:*?"<>|]/g, '_').slice(0, 40) || '元素'
@@ -59,13 +59,10 @@ export async function downloadSvg(project: Project): Promise<void> {
     parts.push(`<g id="e-${item.id}">`)
     if (item.kind === 'path') parts.push(`<g transform="translate(${item.x} ${item.y})">${elementSvg(item).replace(/^<svg[^>]*>/, '').replace(/<\/svg>$/, '')}</g>`)
     if (item.kind === 'rect') parts.push(`<rect x="${item.x}" y="${item.y}" width="${item.width}" height="${item.height}" fill="${item.fill}"/>`)
-    if (item.kind === 'text') {
-      const lines = item.text.split('\n').map((line, index) => `<tspan x="${item.x}" dy="${index ? item.fontSizeMm * 1.2 : 0}">${xml(line)}</tspan>`).join('')
-      parts.push(`<text x="${item.x}" y="${item.y + item.fontSizeMm}" font-size="${item.fontSizeMm}" fill="${item.color}" font-family="Arial, sans-serif" xml:space="preserve">${lines}</text>`)
-    }
+    if (item.kind === 'text') parts.push(`<g transform="translate(${item.x} ${item.y})">${textSvgBody(item)}</g>`)
     if (item.kind === 'image') {
       const src = await assetDataUrl(assetFor(project, item.assetId).url)
-      parts.push(`<image x="${item.x}" y="${item.y}" width="${item.width}" height="${item.height}" preserveAspectRatio="xMidYMid meet" xlink:href="${src}"/>`)
+      parts.push(`<image x="${item.x}" y="${item.y}" width="${item.width}" height="${item.height}" preserveAspectRatio="xMidYMid meet" href="${src}" xlink:href="${src}"/>`)
     }
     parts.push('</g>')
   }
@@ -80,9 +77,11 @@ function drawItem(context: CanvasRenderingContext2D, item: WallElement, scale: n
     context.fillRect(x, y, item.width * scale, item.height * scale)
   } else if (item.kind === 'text') {
     context.fillStyle = item.color
-    context.font = `${Math.max(1, item.fontSizeMm * scale)}px Arial, sans-serif`
+    context.font = `${item.fontWeight || 700} ${Math.max(1, item.fontSizeMm * scale)}px Microsoft YaHei, Arial, sans-serif`
     context.textBaseline = 'top'
-    item.text.split('\n').forEach((line, index) => context.fillText(line, x, y + index * item.fontSizeMm * scale * 1.2, item.width * scale))
+    context.save(); context.translate(x, y); context.rotate((item.rotationDeg || 0) * Math.PI / 180)
+    item.text.split('\n').forEach((line, index) => context.fillText(line, 0, index * item.fontSizeMm * scale * 1.12, item.width * scale))
+    context.restore()
   } else if (image) context.drawImage(image, x, y, item.width * scale, item.height * scale)
 }
 function canvas(width: number, height: number): HTMLCanvasElement {

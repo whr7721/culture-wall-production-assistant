@@ -19,7 +19,7 @@ describe('independent SVG asset', () => {
     const svg = elementSvg({ id: 'b', kind: 'text', width: 900, height: 200, text: '欧连 & ACH\n<script>', fontSizeMm: 60, color: '#183d58' })
     expect(svg).toContain('欧连 &amp; ACH')
     expect(svg).toContain('&lt;script&gt;')
-    expect(svg).toContain('dy="72"')
+    expect(svg).toContain('dy="67.2"')
     expect(svg).not.toContain('<script>')
   })
   it('does not falsely wrap images as vectors', () => {

@@ -1,0 +1,73 @@
+import { strict as assert } from 'node:assert'
+import { mkdtemp, mkdir, readFile, writeFile } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import path from 'node:path'
+import express from 'express'
+import { chromium } from 'playwright-core'
+
+const fixture = path.resolve('output/color-layer-acceptance/ach-source-preview.png')
+const image = await readFile(fixture)
+const output = path.resolve('output/ocr-acceptance')
+await mkdir(output, { recursive: true })
+process.env.PROJECTS_DIR = await mkdtemp(path.join(tmpdir(), 'culture-wall-ocr-'))
+const { projectsRouter } = await import('../server/routes/projects.ts')
+const app = express()
+app.use((_request, response, next) => { response.locals.invite = { username: 'test-user' }; next() })
+app.use('/api/projects', projectsRouter)
+const server = app.listen(0, '127.0.0.1')
+await new Promise<void>((resolve) => server.once('listening', resolve))
+const origin = `http://127.0.0.1:${(server.address() as { port: number }).port}`
+const browser = await chromium.launch({ executablePath: 'C:/Program Files/Google/Chrome/Application/chrome.exe', headless: true })
+try {
+  const page = await browser.newPage({ acceptDownloads: true, viewport: { width: 1440, height: 1100 } })
+  await page.route(/\/api\/projects(\/|$|\?)/, async (route) => {
+    const url = new URL(route.request().url())
+    const response = await route.fetch({ url: origin + url.pathname + url.search })
+    await route.fulfill({ response })
+  })
+  await page.goto('http://127.0.0.1:5173/', { waitUntil: 'networkidle' })
+  await page.getByRole('button', { name: '新建项目', exact: true }).click()
+  await page.getByLabel('新项目名称').fill('ACH-本地OCR验收')
+  await page.getByRole('button', { name: '创建项目', exact: true }).click()
+  await page.locator('#projects input[type=file][accept="image/png,image/jpeg,image/webp"]').setInputFiles({ name: 'ach-source.png', mimeType: 'image/png', buffer: image })
+  await page.getByText('素材已上传', { exact: false }).waitFor()
+  const assetId = await page.getByLabel('添加图片素材').locator('option').nth(1).getAttribute('value')
+  await page.getByLabel('添加图片素材').selectOption(assetId!)
+  const ocrResponse = page.waitForResponse((response) => /\/api\/projects\/[^/]+\/ocr$/.test(new URL(response.url()).pathname))
+  await page.getByRole('button', { name: '识别这张图片的文字' }).click()
+  const ocrPayload = await (await ocrResponse).json()
+  assert.equal(ocrPayload.data.engine, 'RapidOCR')
+  assert(ocrPayload.data.items.every((line: Record<string, unknown>) => typeof line.score === 'number' && Array.isArray(line.polygon) && (line.polygon as unknown[]).length === 4 && typeof line.rotation === 'number' && typeof line.fontSize === 'number' && /^#[0-9a-f]{6}$/.test(String(line.color))))
+  await page.getByText(/本地识别到 \d+ 个文字框/).waitFor({ timeout: 90_000 })
+  const boxes = await page.locator('.ocr-line').count()
+  assert(boxes >= 4)
+  const texts = await Promise.all((await page.locator('.ocr-line textarea').all()).map((field) => field.inputValue()))
+  assert(texts.some((text) => text.includes('ACH')))
+  assert(texts.some((text) => text.includes('上海汽连')))
+  await page.locator('.text-extractor').screenshot({ path: path.join(output, 'ocr-panel.png') })
+  await page.screenshot({ path: path.join(output, 'ocr-review.png'), fullPage: true })
+  await page.getByRole('button', { name: /加入选中文字对象/ }).click()
+  await page.getByText(/已加入 \d+ 个可编辑文字对象/).waitFor()
+  await page.getByRole('button', { name: '保存项目', exact: true }).click()
+  await page.getByText('已保存到服务器', { exact: false }).waitFor()
+  const id = await page.getByLabel('选择项目').inputValue()
+  await page.reload({ waitUntil: 'networkidle' })
+  await page.getByLabel('选择项目').selectOption(id)
+  await page.locator('.element-picks button').first().waitFor()
+  assert.equal(await page.locator('.element-picks button').count(), boxes + 1)
+  await page.getByLabel('尺寸已现场复尺').check()
+  await page.getByRole('button', { name: '确认平面稿', exact: true }).click()
+  await page.getByText('平面稿已确认', { exact: false }).waitFor()
+  const download = page.waitForEvent('download')
+  await page.getByRole('button', { name: '下载 SVG', exact: true }).click()
+  const svg = await readFile((await (await download).path())!, 'utf8')
+  assert.match(svg, /<image\b/); assert.match(svg, /<text\b/); assert.match(svg, /<tspan\b/)
+  assert.match(svg, /ACH/); assert.doesNotMatch(svg, /<path\b/)
+  await writeFile(path.join(output, 'ach-ocr-layer.svg'), svg)
+  const report = { boxes, texts, colours: await page.locator('.element-picks button').count(), svgContainsImageAndEditableText: true }
+  await writeFile(path.join(output, 'report.json'), JSON.stringify(report, null, 2))
+  console.log(JSON.stringify(report))
+} finally {
+  await browser.close()
+  await new Promise<void>((resolve) => server.close(() => resolve()))
+}

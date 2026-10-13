@@ -7,10 +7,13 @@ import { config } from '../config.ts'
 import { projectSchema, projectWarnings, type Project } from '../domain/project.ts'
 import { detectedImageMime } from '../security/imageValidation.ts'
 import type { InviteRecord } from '../security/invites.ts'
+import { recognizeWithProvider } from '../services/ocr.ts'
 
 export const projectsRouter = Router()
 const idPattern = /^[0-9a-f-]{36}$/
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 12 * 1024 * 1024, files: 1 } })
+let ocrActive = false
+const ocrAttempts = new Map<string, number>()
 projectsRouter.use(json({ limit: '2mb' }))
 projectsRouter.param('id', (request, response, next, id) => {
   if (!idPattern.test(String(id))) { response.sendStatus(404); return }
@@ -123,4 +126,26 @@ projectsRouter.get('/:id/assets/:assetId', async (request, response) => {
   const file = path.join(userDir(usernameOf(response)), id, 'assets', `${assetId}.${extension}`)
   try { await stat(file) } catch { response.sendStatus(404); return }
   response.type(asset.mime).sendFile(file)
+})
+
+projectsRouter.post('/:id/ocr', upload.single('source_image'), async (request, response) => {
+  const project = await readProject(usernameOf(response), String(request.params.id))
+  if (!project) { response.sendStatus(404); return }
+  if (ocrActive) { response.status(429).json({ error: '另一张图片正在识别，请稍后重试' }); return }
+  const file = request.file
+  if (!file || detectedImageMime(file.buffer) !== file.mimetype) { response.status(400).json({ error: 'OCR 只接受有效的 PNG、JPEG 或 WebP 图片' }); return }
+  if (request.body?.action !== 'ocr' || request.body?.provider && request.body.provider !== 'rapidocr') { response.status(400).json({ error: '当前仅支持本地 RapidOCR' }); return }
+  const width = Number(request.body?.width), height = Number(request.body?.height)
+  if (![width, height].every((value) => Number.isInteger(value) && value > 0 && value <= 6000)) { response.status(400).json({ error: '图片宽高无效' }); return }
+  const key = `${new Date().toISOString().slice(0, 10)}:${usernameOf(response)}`
+  const attempts = ocrAttempts.get(key) || 0
+  if (attempts >= 10) { response.status(429).json({ error: '今日 OCR 测试次数已达 10 次' }); return }
+  ocrAttempts.set(key, attempts + 1)
+  ocrActive = true
+  try {
+    const result = await recognizeWithProvider(file.buffer)
+    if (result.data.width !== width || result.data.height !== height) { response.status(400).json({ error: '图片尺寸与提交值不一致' }); return }
+    response.json(result)
+  } catch (error) { response.status(503).json({ error: error instanceof Error ? error.message : '本地 OCR 暂不可用' }) }
+  finally { ocrActive = false }
 })
