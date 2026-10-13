@@ -12,7 +12,8 @@
     "invite:add": "tsx scripts/create-invite.ts",
     "invite:limit": "tsx scripts/set-invite-limit.ts",
     "test:browser": "tsx scripts/acceptance-browser.ts",
-    "test:project-browser": "tsx scripts/acceptance-project.ts"
+    "test:project-browser": "tsx scripts/acceptance-project.ts",
+    "test:vector-browser": "tsx scripts/acceptance-color-layers.ts"
   },
   "dependencies": {
     "@visioncortex/vtracer": "1.0.0-alpha.4",
@@ -22,6 +23,7 @@
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
     "sharp": "0.34.4",
+    "svgpath": "2.6.0",
     "tsx": "^4.20.6",
     "zod": "^4.6.5"
   },

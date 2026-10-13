@@ -1,4 +1,4 @@
-type Element = { id: string; kind: string; width: number; height: number; text?: string; fontSizeMm?: number; color?: string; fill?: string; d?: string; sourceX?: number; sourceY?: number; sourceWidth?: number; sourceHeight?: number; stroke?: string; strokeWidth?: number }
+type Element = { id: string; kind: string; width: number; height: number; text?: string; fontSizeMm?: number; color?: string; fill?: string; d?: string; sourceX?: number; sourceY?: number; sourceWidth?: number; sourceHeight?: number; stroke?: string; strokeWidth?: number; fillRule?: 'nonzero' | 'evenodd'; strokeLineCap?: 'butt' | 'round' | 'square'; strokeLineJoin?: 'miter' | 'round' | 'bevel' }
 const escapeXml = (value: string) => value.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&apos;')
 
 // Local coordinates preserve physical size, not the element's position on the wall.
@@ -7,7 +7,7 @@ export function elementSvg(item: Element): string {
   if (!['text', 'rect', 'path'].includes(item.kind)) throw new Error('图片尚未矢量化，不能作为独立矢量导出')
   if (![item.width, item.height].every((value) => Number.isFinite(value) && value > 0)) throw new Error('元素尺寸无效')
   let body = ''
-  if (item.kind === 'path') body = `<g transform="scale(${item.width / item.sourceWidth!} ${item.height / item.sourceHeight!})"><path transform="translate(${-item.sourceX!} ${-item.sourceY!})" d="${escapeXml(item.d!)}" fill="${escapeXml(item.fill || 'none')}" stroke="${escapeXml(item.stroke || 'none')}" stroke-width="${item.strokeWidth || 0}"/></g>`
+  if (item.kind === 'path') body = `<g transform="scale(${item.width / item.sourceWidth!} ${item.height / item.sourceHeight!})"><path transform="translate(${-item.sourceX!} ${-item.sourceY!})" d="${escapeXml(item.d!)}" fill="${escapeXml(item.fill || 'none')}" fill-rule="${item.fillRule || 'nonzero'}" stroke="${escapeXml(item.stroke || 'none')}" stroke-width="${item.strokeWidth || 0}" stroke-linecap="${item.strokeLineCap || 'butt'}" stroke-linejoin="${item.strokeLineJoin || 'miter'}"/></g>`
   else if (item.kind === 'rect') body = `<rect width="${item.width}" height="${item.height}" fill="${escapeXml(item.fill || '#000000')}"/>`
   else {
     const font = item.fontSizeMm!
