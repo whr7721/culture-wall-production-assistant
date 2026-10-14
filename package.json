@@ -14,10 +14,12 @@
     "test:browser": "tsx scripts/acceptance-browser.ts",
     "test:project-browser": "tsx scripts/acceptance-project.ts",
     "test:vector-browser": "tsx scripts/acceptance-color-layers.ts",
-    "test:ocr-browser": "tsx scripts/acceptance-ocr.ts"
+    "test:ocr-browser": "tsx scripts/acceptance-ocr.ts",
+    "test:vectorizer-browser": "tsx scripts/acceptance-vectorizerai.ts"
   },
   "dependencies": {
     "@visioncortex/vtracer": "1.0.0-alpha.4",
+    "@xmldom/xmldom": "^0.9.12",
     "dotenv": "^17.2.3",
     "express": "^5.1.0",
     "multer": "^2.0.2",
@@ -27,6 +29,7 @@
     "sharp": "0.35.5",
     "svgpath": "2.6.0",
     "tsx": "^4.20.6",
+    "undici": "^7.30.0",
     "zod": "^4.6.5"
   },
   "devDependencies": {

@@ -212,6 +212,9 @@ footer { margin-top: 40px; padding: 26px 0 34px; border-top: 1px solid var(--lin
 .vector-layer img { width: 100%; height: 100px; object-fit: contain; background: repeating-conic-gradient(#e4e8eb 0% 25%, #fff 0% 50%) 0 0 / 16px 16px; }
 .vector-layer small { display: block; }
 .vector-composite { display: block; width: min(100%, 520px); max-height: 360px; object-fit: contain; background: repeating-conic-gradient(#e4e8eb 0% 25%, #fff 0% 50%) 0 0 / 16px 16px; margin-bottom: 12px; }
+.vector-task-history { margin: 12px 0; padding: 10px; border: 1px solid var(--line); }
+.vector-task-row { padding: 8px 0; border-bottom: 1px solid var(--line); }
+.vector-task-row a, .vector-task-row button { display: inline-block; margin: 4px 8px 4px 0; }
 .ocr-list { display: grid; gap: 8px; max-height: 430px; overflow: auto; margin: 12px 0; }
 .ocr-preview { position: relative; width: min(100%, 520px); margin: 12px 0; border: 1px solid var(--line); }
 .ocr-preview img { display: block; width: 100%; height: auto; }

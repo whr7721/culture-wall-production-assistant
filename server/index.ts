@@ -38,6 +38,7 @@ app.use('/api/vectorize', vectorizeRouter)
 app.get('/api/health', (_request, response) => {
   response.json({ ok: true, providerConfigured: config.imageProvider === 'alibaba' ? Boolean(config.alibabaApiKey && config.alibabaBaseUrl) : Boolean(config.imageApiKey) })
 })
+app.use('/api', (_request, response) => response.status(404).json({ error: 'API不存在' }))
 
 app.use((error: unknown, _request: express.Request, response: express.Response, _next: express.NextFunction) => {
   if (error instanceof Error && error.message === 'UNSUPPORTED_IMAGE_TYPE') {

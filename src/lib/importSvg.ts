@@ -1,6 +1,7 @@
 import { Path } from 'fabric'
 import svgpath from 'svgpath'
 import type { WallElement } from './projects'
+import { cleanVectorSvg } from '../../shared/vectorSvg'
 
 const ns = 'http://www.w3.org/2000/svg'
 const pathPattern = /^[MmLlHhVvCcSsQqTtAaZz0-9eE+.,\s-]+$/
@@ -35,6 +36,7 @@ function checkedTransform(value: string): string {
 // The source document is never inserted into the page DOM.
 export async function importSvgPaths(text: string, widthMm: number): Promise<WallElement[]> {
   if (!Number.isFinite(widthMm) || widthMm <= 0) throw new Error('导入宽度无效')
+  text = cleanVectorSvg(text, source => new DOMParser().parseFromString(source, 'image/svg+xml')).svg
   if (text.length > 1_000_000 || /<!DOCTYPE|<!ENTITY/i.test(text)) throw new Error('SVG过大或包含不支持的声明')
   const doc = new DOMParser().parseFromString(text, 'image/svg+xml')
   const root = doc.documentElement
@@ -96,7 +98,9 @@ export async function importSvgPaths(text: string, widthMm: number): Promise<Wal
     const x = object.pathOffset.x - object.width / 2 - strokeWidth / 2, y = object.pathOffset.y - object.height / 2 - strokeWidth / 2
     const width = object.width + strokeWidth, height = object.height + strokeWidth
     if (![x, y, width, height].every((n) => Number.isFinite(n) && Math.abs(n) <= 1e7) || width <= 0 || height <= 0) throw new Error('存在无效或零面积路径')
-    if (x < view[0] - .01 || y < view[1] - .01) throw new Error('路径超出画板左上边界，请先调整SVG画板')
+    // Boundary strokes can extend half their width beyond an otherwise valid
+    // viewBox (Vectorizer's white frame does this). Keep the path data intact.
+    if (x < view[0] - strokeWidth / 2 - .01 || y < view[1] - strokeWidth / 2 - .01) throw new Error('路径超出画板左上边界，请先调整SVG画板')
     elements.push({ id: crypto.randomUUID(), kind: 'path', d, sourceX: x, sourceY: y, sourceWidth: width, sourceHeight: height, x: Math.max(0, x - view[0]) * scale, y: Math.max(0, y - view[1]) * scale, width: width * scale, height: height * scale, fill, stroke, strokeWidth, fillRule: fillRule as 'nonzero' | 'evenodd', strokeLineCap: strokeLineCap as 'butt' | 'round' | 'square', strokeLineJoin: strokeLineJoin as 'miter' | 'round' | 'bevel', label: `SVG路径${elements.length + 1}` })
     if (elements.length > 120) throw new Error('一次最多导入120个路径，请减少颜色或缩小范围')
   }

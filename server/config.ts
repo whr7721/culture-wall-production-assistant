@@ -4,6 +4,12 @@ function readPositiveNumber(name: string, fallback: number): number {
   const value = Number(process.env[name])
   return Number.isFinite(value) && value > 0 ? value : fallback
 }
+function readNonNegativeNumber(name: string, fallback: number): number {
+  if (process.env[name] === undefined || process.env[name] === '') return fallback
+  const value = Number(process.env[name])
+  // Invalid financial limits fail closed instead of silently enabling spending.
+  return Number.isFinite(value) && value >= 0 ? value : 0
+}
 
 export const config = {
   kimiApiKey: process.env.KIMI_API_KEY || '',
@@ -37,4 +43,21 @@ export const config = {
   imageDownloadHosts: (process.env.IMAGE_DOWNLOAD_HOSTS || '').split(',').map((host) => host.trim().toLowerCase()).filter(Boolean),
   generatedDir: process.env.GENERATED_DIR || 'generated',
   projectsDir: process.env.PROJECTS_DIR || 'data/projects',
+  vectorizerEnabled: process.env.VECTORIZER_AI_ENABLED === '1',
+  vectorizerChannel: process.env.VECTORIZER_AI_CHANNEL || 'official',
+  vectorizer302ApiKey: process.env.VECTORIZER_302_API_KEY || '',
+  vectorizerUseEnvProxy: process.env.VECTORIZER_AI_USE_ENV_PROXY === '1',
+  vectorizerApiId: process.env.VECTORIZER_AI_API_ID || '',
+  vectorizerApiSecret: process.env.VECTORIZER_AI_API_SECRET || '',
+  vectorizerEndpoint: process.env.VECTORIZER_AI_ENDPOINT || 'https://api.vectorizer.ai/api/v1/vectorize',
+  vectorizerMode: process.env.VECTORIZER_AI_MODE || 'test',
+  vectorizerTimeoutMs: readPositiveNumber('VECTORIZER_AI_TIMEOUT_MS', 90_000),
+  vectorizerResultsDir: process.env.VECTORIZER_AI_RESULTS_DIR || 'data/vectorizer-results',
+  vectorizerDailyLimit: readNonNegativeNumber('VECTORIZER_DAILY_LIMIT', 3),
+  vectorizerDailyBudget: readNonNegativeNumber('VECTORIZER_DAILY_BUDGET', 0.9),
+  vectorizerTotalBudget: readNonNegativeNumber('VECTORIZER_TOTAL_BUDGET', 1),
+  vectorizer302CostPtc: readPositiveNumber('VECTORIZER_302_ESTIMATED_COST_PTC', 0.3),
+  vectorizerMinIntervalMs: readNonNegativeNumber('VECTORIZER_MIN_INTERVAL_MS', 15000),
+  vectorizerStorageBudgetMb: readPositiveNumber('VECTORIZER_STORAGE_BUDGET_MB', 1024),
+  vectorizerMinFreeMb: readPositiveNumber('VECTORIZER_MIN_FREE_MB', 128),
 }
