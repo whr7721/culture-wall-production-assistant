@@ -3,7 +3,7 @@ import { mkdir, readFile, readdir, rename, stat, statfs, writeFile } from 'node:
 import path from 'node:path'
 import sharp from 'sharp'
 import { config } from '../config.ts'
-import { processVectorizerSvg, vectorizeWithVectorizerAI, vectorizerStatus, VectorizerError, type VectorizerOptions, type RawVectorResponse } from './providers/vectorizerai.ts'
+import { checkedVectorizerEndpoint, processVectorizerSvg, vectorizeWithVectorizerAI, vectorizerStatus, VectorizerError, type VectorizerOptions, type RawVectorResponse } from './providers/vectorizerai.ts'
 import type { VectorTaskContext, VectorTaskStatus, VectorTaskView } from '../../shared/vectorTasks.ts'
 
 type Task = {
@@ -170,6 +170,7 @@ export async function submitVectorTask(owner: string, input: Buffer, options: Ve
     }
     const availability = vectorizerStatus()
     if (!availability.available) throw new VectorizerError(availability.reason, 503, 'preflight')
+    checkedVectorizerEndpoint()
     if (active.size) throw new VectorizerError('另一项描摹正在处理，请稍后再试，尚未调用上游', 429, 'preflight')
     const day = today(), unit = config.vectorizerChannel === '302' ? 'PTC' as const : 'credit' as const
     const cost = availability.freeTest ? 0 : config.vectorizerChannel === '302' ? config.vectorizer302CostPtc : 1

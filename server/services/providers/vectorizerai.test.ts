@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import sharp from 'sharp'
 import { config } from '../../config.ts'
 import { vectorizeWithVectorizerAI, vectorizerOptionsSchema, vectorizerStatus } from './vectorizerai.ts'
-const original = { vectorizerChannel: config.vectorizerChannel, vectorizer302ApiKey: config.vectorizer302ApiKey, vectorizerEnabled: config.vectorizerEnabled, vectorizerApiId: config.vectorizerApiId, vectorizerApiSecret: config.vectorizerApiSecret, vectorizerMode: config.vectorizerMode, vectorizerEndpoint: config.vectorizerEndpoint }
+const original = { vectorizer302BaseUrl: config.vectorizer302BaseUrl, vectorizerChannel: config.vectorizerChannel, vectorizer302ApiKey: config.vectorizer302ApiKey, vectorizerEnabled: config.vectorizerEnabled, vectorizerApiId: config.vectorizerApiId, vectorizerApiSecret: config.vectorizerApiSecret, vectorizerMode: config.vectorizerMode, vectorizerEndpoint: config.vectorizerEndpoint }
 const sample = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 20"><g fill="none" stroke="#1a2f7c" stroke-width="1"><circle cx="10" cy="10" r="5"/><path d="M25 5L35 15"/></g></svg>'
 let png: Buffer
 beforeEach(async () => {
@@ -12,6 +12,15 @@ beforeEach(async () => {
 })
 afterEach(() => { Object.assign(config, original); vi.unstubAllGlobals() })
 describe('Vectorizer.AI adapter', () => {
+  it('accepts the documented China endpoint and rejects untrusted hosts before sending credentials', async () => {
+    Object.assign(config, { vectorizerChannel: '302', vectorizer302ApiKey: 'test-302-key', vectorizerMode: 'production', vectorizer302BaseUrl: 'https://api.302ai.cn' })
+    await vectorizeWithVectorizerAI(png, vectorizerOptionsSchema.parse({}))
+    expect(String(vi.mocked(fetch).mock.calls[0][0])).toBe('https://api.302ai.cn/vectorizer/api/v1/vectorize')
+    vi.mocked(fetch).mockClear()
+    config.vectorizer302BaseUrl = 'https://example.com'
+    await expect(vectorizeWithVectorizerAI(png, vectorizerOptionsSchema.parse({}))).rejects.toMatchObject({ status: 503, stage: 'preflight' })
+    expect(fetch).not.toHaveBeenCalled()
+  })
   it('302 uses its documented endpoint and Bearer key, reusing SVG parameters and cleaning', async () => {
     Object.assign(config, { vectorizerChannel: '302', vectorizer302ApiKey: 'test-302-key', vectorizerMode: 'production', vectorizerApiId: '', vectorizerApiSecret: '' })
     const result = await vectorizeWithVectorizerAI(png, vectorizerOptionsSchema.parse({ 'output.group_by': 'parent' }))

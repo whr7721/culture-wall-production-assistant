@@ -42,6 +42,8 @@ VECTORIZER_302_API_KEY=<302平台的独立Key>
 接口与费用：https://doc.302.ai/api-162840406 、https://302.ai/product/detail/vectorize
 Key管理：https://help.302.ai/docs/API-guan-li
 
+2026-10-15服务器联通修正：杭州ECS访问 `api.302.ai` 超时，官方另有 `api.302ai.cn`（来源：https://help.302.ai/docs/iOS-APP）。新增服务端 `VECTORIZER_302_BASE_URL`，只允许这两个官方HTTPS地址；服务器固定选 `.cn`，不自动故障切换。免凭据HEAD检查该域名返回200、矢量化路径返回401，说明网络和认证入口可达；未因此调用真实付费描摹，不能据此宣称完整付费转图已验收。
+
 ## 2026-10-14真实本地验收
 
 已配置302独立测试Key（仅本地 `.env`，本文件不记录值），启用本机环境代理。

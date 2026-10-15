@@ -36,12 +36,17 @@ export function vectorizerStatus() {
   const modeAllowed = validMode && (config.vectorizerChannel !== '302' || config.vectorizerMode === 'production')
   return { available: config.vectorizerEnabled && configured && validChannel && modeAllowed, enabled: config.vectorizerEnabled, configured, mode: validMode ? config.vectorizerMode : 'invalid', freeTest: config.vectorizerChannel === 'official' && config.vectorizerMode === 'test', reason: !config.vectorizerEnabled ? '高质量描摹暂未启用' : !validChannel ? '服务端描摹通道配置无效' : !configured ? config.vectorizerChannel === '302' ? '尚未配置高质量描摹服务端 API Key' : '尚未配置服务端 API Id / API Secret；免费 test 模式也需要凭据' : !validMode ? '服务端描摹模式配置无效' : !modeAllowed ? '该通道按次计费；确认开通费用后由维护者将服务端模式设为 production' : '' }
 }
+export function checkedVectorizerEndpoint(): URL {
+  if (config.vectorizerChannel === '302' && !['https://api.302.ai', 'https://api.302ai.cn'].includes(config.vectorizer302BaseUrl)) throw new VectorizerError('302描摹只允许使用官方API地址', 503, 'preflight')
+  let endpoint: URL
+  try { endpoint = new URL(config.vectorizerChannel === '302' ? `${config.vectorizer302BaseUrl}/vectorizer/api/v1/vectorize` : config.vectorizerEndpoint) } catch { throw new VectorizerError('描摹 API 地址配置无效', 503, 'preflight') }
+  if (endpoint.protocol !== 'https:' || endpoint.username || endpoint.password || endpoint.search || endpoint.hash) throw new VectorizerError('描摹 API 地址必须为不含凭据及查询参数的 HTTPS 地址', 503, 'preflight')
+  return endpoint
+}
 export async function vectorizeWithVectorizerAI(input: Buffer, options: VectorizerOptions, capture?: (raw: Buffer, metadata: RawVectorResponse) => Promise<void>): Promise<VectorizerResult> {
   const status = vectorizerStatus()
   if (!status.available) throw new VectorizerError(status.reason, 503, 'preflight')
-  let endpoint: URL
-  try { endpoint = new URL(config.vectorizerChannel === '302' ? 'https://api.302.ai/vectorizer/api/v1/vectorize' : config.vectorizerEndpoint) } catch { throw new VectorizerError('描摹 API 地址配置无效', 503, 'preflight') }
-  if (endpoint.protocol !== 'https:' || endpoint.username || endpoint.password || endpoint.search || endpoint.hash) throw new VectorizerError('描摹 API 地址必须为不含凭据及查询参数的 HTTPS 地址', 503, 'preflight')
+  const endpoint = checkedVectorizerEndpoint()
   const parsed = vectorizerOptionsSchema.parse(options)
   const meta = await sharp(input, { limitInputPixels: 33_554_432 }).metadata()
   if (meta.format !== 'png') throw new VectorizerError('只能提交有效的 PNG 图片', 400)

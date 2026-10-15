@@ -47,6 +47,7 @@ export const config = {
   vectorizerEnabled: process.env.VECTORIZER_AI_ENABLED === '1',
   vectorizerChannel: process.env.VECTORIZER_AI_CHANNEL || 'official',
   vectorizer302ApiKey: process.env.VECTORIZER_302_API_KEY || '',
+  vectorizer302BaseUrl: (process.env.VECTORIZER_302_BASE_URL || 'https://api.302.ai').replace(/\/$/, ''),
   vectorizerUseEnvProxy: process.env.VECTORIZER_AI_USE_ENV_PROXY === '1',
   vectorizerApiId: process.env.VECTORIZER_AI_API_ID || '',
   vectorizerApiSecret: process.env.VECTORIZER_AI_API_SECRET || '',

@@ -34,6 +34,9 @@ try {
     '-o', ('UserKnownHostsFile="' + $hostsPath + '"'),
     '-o', 'StrictHostKeyChecking=yes',
     '-o', 'ExitOnForwardFailure=yes',
+    '-o', 'ConnectTimeout=15',
+    '-o', 'ServerAliveInterval=20',
+    '-o', 'ServerAliveCountMax=3',
     '-N',
     '-L', "127.0.0.1:${port}:127.0.0.1:8080",
     'culturetrial1@47.99.189.172'
