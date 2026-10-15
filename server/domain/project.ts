@@ -15,7 +15,7 @@ const elementBase = z.object({
 const elementSchema = z.discriminatedUnion('kind', [
   elementBase.extend({ kind: z.literal('path'), d: z.string().min(1).max(50000).regex(/^[MmLlHhVvCcSsQqTtAaZz0-9eE+.,\s-]+$/), sourceX: z.number().finite(), sourceY: z.number().finite(), sourceWidth: positive, sourceHeight: positive, fill: z.string().regex(/^(#[0-9a-fA-F]{6}|none)$/), stroke: z.string().regex(/^(#[0-9a-fA-F]{6}|none)$/), strokeWidth: z.number().finite().min(0).max(1000), fillRule: z.enum(['nonzero', 'evenodd']).optional(), strokeLineCap: z.enum(['butt', 'round', 'square']).optional(), strokeLineJoin: z.enum(['miter', 'round', 'bevel']).optional(), label: z.string().max(80) }),
   elementBase.extend({ kind: z.literal('rect'), fill: color, label: z.string().max(80).default('装饰') }),
-  elementBase.extend({ kind: z.literal('text'), text: z.string().max(1200), fontSizeMm: positive.max(2000), color, rotationDeg: z.number().finite().min(-180).max(180).optional(), fontWeight: z.number().int().min(100).max(900).optional(), ocrScore: z.number().min(0).max(1).optional(), ocrPolygon: z.array(z.tuple([z.number().finite(), z.number().finite()])).length(4).optional() }),
+  elementBase.extend({ kind: z.literal('text'), text: z.string().max(1200), fontSizeMm: positive.max(2000), color, fontFamily: z.enum(['Microsoft YaHei', 'SimSun', 'Arial']).optional(), rotationDeg: z.number().finite().min(-180).max(180).optional(), fontWeight: z.number().int().min(100).max(900).optional(), ocrScore: z.number().min(0).max(1).optional(), ocrPolygon: z.array(z.tuple([z.number().finite(), z.number().finite()])).length(4).optional() }),
   elementBase.extend({ kind: z.literal('image'), assetId: uuid, label: z.string().max(80).default('图片') }),
 ])
 export const assetSchema = z.object({
@@ -34,6 +34,7 @@ export const projectSchema = z.object({
   copy: z.string().max(6000), notes: z.string().max(2000),
   obstacles: z.array(obstacleSchema).max(30), elements: z.array(elementSchema).max(120),
   assets: z.array(assetSchema).max(20), concepts: z.array(conceptSchema).max(30),
+  archived: z.boolean().default(false),
   status: z.enum(['draft', 'approved']), revision: z.number().int().min(1),
   createdAt: z.string().datetime(), updatedAt: z.string().datetime(),
 })

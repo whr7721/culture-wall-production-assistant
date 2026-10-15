@@ -11,6 +11,7 @@
 - `/opt/culture-wall/current`：当前版本链接；
 - `/var/lib/culture-wall/generated/<受邀账号>`：按账号隔离、持久化的生成图片；
 - `/var/lib/culture-wall/projects/<受邀账号>`：按账号隔离、持久化的项目与上传素材；
+- `/var/lib/culture-wall/vectorizer-results`：描摹任务、原始响应、清洗结果和预算账本；
 - `/var/lib/culture-wall/usage.json`：持久化试用额度；
 - `/etc/culture-wall/culture-wall.env`：服务端中转站配置；
 - `/etc/culture-wall/invites.json`：受邀用户密码哈希和额度；
@@ -18,6 +19,8 @@
 - `/etc/nginx/sites-available/culture-wall`：仅回环地址反向代理。
 
 更新版本时不清理 `/var/lib/culture-wall`。发布前保留旧 `current` 目标，以便回滚。
+
+2026-10-15：已发布P0提交 `c008506`；服务器描摹每日/累计预算均设为0。第二批本地修复、发布及回退记录见 [第二批修复验收](../docs/第二批修复验收-20261015.md)。
 
 ## 本机访问
 

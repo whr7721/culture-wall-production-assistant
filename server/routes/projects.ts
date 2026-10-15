@@ -1,15 +1,19 @@
 import { randomUUID } from 'node:crypto'
 import { mkdir, readFile, readdir, rename, stat, writeFile } from 'node:fs/promises'
 import path from 'node:path'
-import { Router, json } from 'express'
+import { Router, json, type Request, type Response } from 'express'
 import multer from 'multer'
 import { config } from '../config.ts'
 import { projectSchema, projectWarnings, type Project } from '../domain/project.ts'
 import { detectedImageMime } from '../security/imageValidation.ts'
 import type { InviteRecord } from '../security/invites.ts'
 import { recognizeWithProvider } from '../services/ocr.ts'
+import { withProjectLock } from '../services/projectLock.ts'
 
 export const projectsRouter = Router()
+projectsRouter.get('/session', (_request, response) => response.json({ username: usernameOf(response) }))
+const mutation = (action: (request: Request, response: Response) => Promise<void>) =>
+  (request: Request, response: Response) => withProjectLock(path.resolve(config.projectsDir, usernameOf(response)), () => action(request, response))
 const idPattern = /^[0-9a-f-]{36}$/
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 12 * 1024 * 1024, files: 1 } })
 let ocrActive = false
@@ -40,8 +44,20 @@ async function saveProject(username: string, project: Project): Promise<void> {
   await mkdir(path.dirname(file), { recursive: true, mode: 0o700 })
   const temporary = `${file}.${randomUUID()}.tmp`
   await writeFile(temporary, JSON.stringify(project, null, 2), { mode: 0o600 })
-  await rename(temporary, file)
+  for (let attempt = 0; ; attempt++) {
+    try { await rename(temporary, file); break } catch (error) {
+      if (!['EPERM', 'EBUSY'].includes((error as NodeJS.ErrnoException).code || '') || attempt >= 3) throw error
+      await new Promise(resolve => setTimeout(resolve, 25 * (attempt + 1)))
+    }
+  }
 }
+
+async function activeCount(username: string) {
+  const ids = await readdir(userDir(username)).catch((error: NodeJS.ErrnoException) => error.code === 'ENOENT' ? [] : Promise.reject(error))
+  const projects = await Promise.all(ids.filter(id => idPattern.test(id)).map(id => readProject(username, id)))
+  return projects.filter(p => p && !p.archived).length
+}
+projectsRouter.get('/capacity', async (_request, response) => { response.json({ active: await activeCount(usernameOf(response)), limit: config.projectActiveLimit }) })
 
 projectsRouter.get('/', async (_request, response) => {
   const dir = userDir(usernameOf(response))
@@ -51,10 +67,10 @@ projectsRouter.get('/', async (_request, response) => {
     throw error
   }
   const rows = await Promise.all(ids.filter((id) => idPattern.test(id)).map((id) => readProject(usernameOf(response), id)))
-  response.json(rows.filter(Boolean).map((item) => ({ id: item!.id, title: item!.title, updatedAt: item!.updatedAt, status: item!.status })).sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)))
+  response.json(rows.filter(Boolean).map((item) => ({ id: item!.id, title: item!.title, updatedAt: item!.updatedAt, status: item!.status, archived: item!.archived })).sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)))
 })
 
-projectsRouter.post('/', async (request, response) => {
+projectsRouter.post('/', mutation(async (request, response) => {
   const title = String(request.body?.title || '未命名文化墙').trim().slice(0, 80)
   const now = new Date().toISOString()
   const project = projectSchema.parse({
@@ -62,12 +78,10 @@ projectsRouter.post('/', async (request, response) => {
     measurementStatus: 'to_measure', copy: '', notes: '', obstacles: [], elements: [],
     assets: [], concepts: [], status: 'draft', revision: 1, createdAt: now, updatedAt: now,
   })
-  const dir = userDir(usernameOf(response))
-  const entries = await readdir(dir).catch((error: NodeJS.ErrnoException) => error.code === 'ENOENT' ? [] : Promise.reject(error))
-  if (entries.length >= 20) { response.status(400).json({ error: '每个账号最多保存 20 个项目' }); return }
+  if (await activeCount(usernameOf(response)) >= config.projectActiveLimit) { response.status(400).json({ error: `最多 ${config.projectActiveLimit} 个使用中项目，请先归档旧项目（素材会保留）` }); return }
   await saveProject(usernameOf(response), project)
   response.status(201).json(project)
-})
+}))
 
 projectsRouter.get('/:id', async (request, response) => {
   const project = await readProject(usernameOf(response), String(request.params.id))
@@ -75,15 +89,15 @@ projectsRouter.get('/:id', async (request, response) => {
   response.json({ ...project, warnings: projectWarnings(project) })
 })
 
-projectsRouter.put('/:id', async (request, response) => {
+projectsRouter.put('/:id', mutation(async (request, response) => {
   const id = String(request.params.id)
   const current = await readProject(usernameOf(response), id)
   if (!current) { response.sendStatus(404); return }
+  if (current.archived) { response.status(409).json({ error: '请先恢复已归档项目' }); return }
   const parsed = projectSchema.safeParse(request.body)
-  if (!parsed.success || parsed.data.id !== id || parsed.data.revision !== current.revision) {
-    response.status(409).json({ error: '项目版本已变化或数据无效，请重新打开项目再保存' }); return
-  }
-  const candidate = { ...parsed.data, assets: current.assets, createdAt: current.createdAt }
+  if (!parsed.success || parsed.data.id !== id) { response.status(400).json({ error: '项目数据无效，请检查尺寸和元素数量；草稿仍保留' }); return }
+  if (parsed.data.revision !== current.revision) { response.status(409).json({ error: '另一窗口已更新项目，请重新打开并恢复本机草稿后核对；当前草稿仍保留' }); return }
+  const candidate = { ...parsed.data, archived: current.archived, assets: current.assets, createdAt: current.createdAt }
   const warnings = projectWarnings(candidate)
   if (candidate.status === 'approved' && (warnings.length || candidate.elements.length === 0)) {
     response.status(400).json({ error: '仍有尺寸或碰撞问题，不能确认平面稿', warnings }); return
@@ -91,12 +105,22 @@ projectsRouter.put('/:id', async (request, response) => {
   const next = { ...candidate, revision: current.revision + 1, updatedAt: new Date().toISOString() }
   await saveProject(usernameOf(response), next)
   response.json({ ...next, warnings })
-})
+}))
 
-projectsRouter.post('/:id/assets', upload.single('asset'), async (request, response) => {
+projectsRouter.post('/:id/archive', mutation(async (request, response) => {
+  const owner = usernameOf(response), current = await readProject(owner, String(request.params.id))
+  if (!current) { response.sendStatus(404); return }
+  if (typeof request.body.archived !== 'boolean' || request.body.revision !== current.revision) { response.status(409).json({ error: '项目已变化，请重新打开后操作；当前草稿仍保留' }); return }
+  if (current.archived && !request.body.archived && await activeCount(owner) >= config.projectActiveLimit) { response.status(400).json({ error: '使用中项目已满，请先归档其他项目' }); return }
+  const next = { ...current, archived: request.body.archived, revision: current.revision + 1, updatedAt: new Date().toISOString() }
+  await saveProject(owner, next); response.json(next)
+}))
+
+projectsRouter.post('/:id/assets', upload.single('asset'), mutation(async (request, response) => {
   const id = String(request.params.id)
   const project = await readProject(usernameOf(response), id)
   if (!project) { response.sendStatus(404); return }
+  if (project.archived || Number(request.body.revision) !== project.revision) { response.status(409).json({ error: '项目已变化或已归档，请先重新打开；当前草稿仍保留' }); return }
   const file = request.file
   if (!file || detectedImageMime(file.buffer) !== file.mimetype) {
     response.status(400).json({ error: '素材必须是有效的 PNG、JPEG 或 WebP' }); return
@@ -114,7 +138,7 @@ projectsRouter.post('/:id/assets', upload.single('asset'), async (request, respo
   project.status = 'draft'
   await saveProject(usernameOf(response), project)
   response.status(201).json({ asset, project })
-})
+}))
 
 projectsRouter.get('/:id/assets/:assetId', async (request, response) => {
   const id = String(request.params.id)

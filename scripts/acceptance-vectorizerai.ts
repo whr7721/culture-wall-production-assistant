@@ -42,6 +42,7 @@ const origin = `http://127.0.0.1:${(server.address() as { port: number }).port}`
 const browser = await chromium.launch({ executablePath: process.env.CHROME_PATH || 'C:/Program Files/Google/Chrome/Application/chrome.exe', headless: true })
 try {
   const page = await browser.newPage({ acceptDownloads: true, viewport: { width: 1400, height: 1000 } })
+  page.on('dialog', dialog => void dialog.accept())
   await page.goto(origin, { waitUntil: 'networkidle' })
   await page.getByRole('button', { name: '新建项目', exact: true }).click()
   await page.getByLabel('新项目名称').fill('高质量描摹模拟全链路验收')

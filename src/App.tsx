@@ -133,7 +133,7 @@ export function App() {
                 <option value="space">生成上墙空间效果图（包含文案）</option>
                 <option value="flat">效果图转二维正视候选（保留图形和文字）</option>
               </select>
-              <small className="field-help">转换时第一张参考图必须是原效果图。准备转换不会立即扣费，确认后再点击生成。</small>
+              {task === 'flat' && <small className="field-help">第一张参考图请放原效果图，点击生成后才提交。</small>}
             </div>
             <div className="field-group">
               <div className="field-heading">

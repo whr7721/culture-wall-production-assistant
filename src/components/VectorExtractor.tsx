@@ -17,6 +17,7 @@ export function VectorExtractor({ projectId, item, url, remaining, onAdd }: { pr
   const alive = useRef(true)
   const controller = useRef<AbortController | null>(null)
   const [crop, setCrop] = useState<Crop>(entire)
+  const [sourcePixels, setSourcePixels] = useState({ width: 0, height: 0 })
   const [mode, setMode] = useState<'layers' | 'color'>('layers')
   const [provider, setProvider] = useState<'local' | 'vectorizerai'>('local')
   const [cloudStatus, setCloudStatus] = useState<{ available: boolean; mode: string; reason: string; freeTest?: boolean } | null>(null)
@@ -128,6 +129,7 @@ export function VectorExtractor({ projectId, item, url, remaining, onAdd }: { pr
   const generate = async () => {
     if (!image.current?.naturalWidth || crop.width < .005 || crop.height < .005) { setMessage('请先在图片上拖动框选范围'); return }
     if (provider === 'vectorizerai' && forceNew && !window.confirm('将放弃自动复用，重新向上游提交，可能再次扣费。确定吗？')) return
+    if (provider === 'vectorizerai' && !forceNew && cloudStatus?.mode === 'production' && budget && budget.dailyBudget > 0 && !window.confirm(`相同任务将免费复用；新任务预计消耗 ${budget.estimatedPerCall} ${budget.unit}。确认提交？`)) return
     setBusy(true); invalidate()
     controller.current = new AbortController()
     try {
@@ -135,7 +137,8 @@ export function VectorExtractor({ projectId, item, url, remaining, onAdd }: { pr
       const sx = Math.floor(crop.x * original.naturalWidth), sy = Math.floor(crop.y * original.naturalHeight)
       const sw = Math.min(original.naturalWidth - sx, Math.max(1, Math.round(crop.width * original.naturalWidth)))
       const sh = Math.min(original.naturalHeight - sy, Math.max(1, Math.round(crop.height * original.naturalHeight)))
-      const ratio = Math.min(1, 1536 / Math.max(sw, sh))
+      if (provider === 'vectorizerai' && sw * sh > 33_554_432) throw new Error('原始框选超过3200万像素，请缩小区域；尚未调用上游')
+      const ratio = provider === 'vectorizerai' ? 1 : Math.min(1, 1536 / Math.max(sw, sh))
       const canvas = document.createElement('canvas')
       canvas.width = Math.max(1, Math.round(sw * ratio)); canvas.height = Math.max(1, Math.round(sh * ratio))
       const context = canvas.getContext('2d', { willReadFrequently: true })!
@@ -150,7 +153,8 @@ export function VectorExtractor({ projectId, item, url, remaining, onAdd }: { pr
         context.putImageData(pixels, 0, 0)
       }
       const blob = await new Promise<Blob>((resolve, reject) => canvas.toBlob((value) => value ? resolve(value) : reject(new Error('无法读取框选图片')), 'image/png'))
-      if (blob.size > 2 * 1024 * 1024) throw new Error('框选区域过于复杂，请缩小范围')
+      const maxMb = provider === 'vectorizerai' ? 8 : 2
+      if (blob.size > maxMb * 1024 * 1024) throw new Error(`框选PNG为 ${(blob.size / 1024 / 1024).toFixed(1)} MB，超过此通道 ${maxMb} MB，请缩小范围；尚未调用上游`)
       const form = new FormData(); form.append('mask', blob, 'selection.png')
       if (provider === 'vectorizerai') {
         form.set('output.draw_style', drawStyle); form.set('processing.palette', palette)
@@ -196,7 +200,7 @@ export function VectorExtractor({ projectId, item, url, remaining, onAdd }: { pr
 
   return <div className="selected-editor vector-extractor">
     <h3>图片分层与 SVG 提取</h3>
-    <p className="tiny-note">拖动框选要处理的区域，或直接处理整张图。颜色层可能同时包含背景和文字，请逐层预览；加入画布后的轮廓可单独移动、改色和下载。细小文字请对照原文检查。</p>
+    <p className="tiny-note">框选区域生成矢量，可编辑文字请用文字识别重建。</p>
     <details className="vector-task-history"><summary>已保存的描摹任务（恢复／下载不调用收费接口） · {tasks.length}</summary>
       {budget && <p className="tiny-note">本站预算：今日预占 {budget.dailyReserved} / {budget.dailyBudget} {budget.unit}，总预占 {budget.totalReserved} / {budget.totalBudget} {budget.unit}。预计新调用 {budget.estimatedPerCall} {budget.unit}／次。{budget.note}</p>}
       {tasks.map(task => <div key={task.id} className="vector-task-row"><p>{new Date(task.createdAt).toLocaleString('zh-CN')} · {task.legacy ? '旧版结果' : ({ ready: '已保存', running: '上游处理中', processing: '本地处理中', needs_repair: '本地处理待修复', upstream_failed: '上游失败', unknown: '任务中断／费用待核实' } as const)[task.status]} · {task.id.slice(0, 8)}</p>
@@ -215,14 +219,16 @@ export function VectorExtractor({ projectId, item, url, remaining, onAdd }: { pr
       <label className="check"><input type="checkbox" checked={forceNew} disabled={busy} onChange={event => setForceNew(event.target.checked)}/>不复用旧任务，重新付费提交（需再次确认）</label>
       <div className="button-pair"><button type="button" disabled={busy} onClick={() => { setDrawStyle('stroke_edges'); invalidate() }}>图标：描边</button><button type="button" disabled={busy} onClick={() => { setDrawStyle('fill_shapes'); invalidate() }}>色块：填充</button></div>
       <label>绘制方式（draw_style）<select aria-label="绘制方式" disabled={busy} value={drawStyle} onChange={event => { setDrawStyle(event.target.value); invalidate() }}><option value="stroke_edges">stroke_edges · 图标边缘描边</option><option value="fill_shapes">fill_shapes · 色块填充</option><option value="stroke_shapes">stroke_shapes · 形状描边</option></select></label>
-      <label>锁色（processing.palette）<input aria-label="锁色色板" placeholder="#1a2f7c;#ffffff;" disabled={busy} value={palette} onChange={event => { setPalette(event.target.value); invalidate() }}/></label><p className="tiny-note">十六进制颜色以分号结束；#00000000; 表示透明。只填一个颜色可能让所有形状同色，图标可同时保留背景色。</p>
-      <label>最大颜色数（max_colors）<input aria-label="最大颜色数" type="number" min="0" max="256" step="1" disabled={busy} value={maxColors} onChange={event => { setMaxColors(Number(event.target.value)); invalidate() }}/></label><p className="tiny-note">0 为自动；1 和 2 均为双色。锁色时仍需检查背景与细节。</p>
-      <label>分组（group_by）<select aria-label="描摹分组" disabled={busy} value={groupBy} onChange={event => { setGroupBy(event.target.value); invalidate() }}>{['none', 'color', 'parent', 'layer'].map(value => <option key={value} value={value}>{value}</option>)}</select></label><p className="tiny-note">按颜色分组在描边模式下可能不产生分组。下载保留上游分组，加入画布时展开为独立路径。</p>
+      <label>锁色（processing.palette）<input aria-label="锁色色板" placeholder="#1a2f7c;#ffffff;" disabled={busy} value={palette} onChange={event => { setPalette(event.target.value); invalidate() }}/></label>
+      <label>最大颜色数（max_colors）<input aria-label="最大颜色数" type="number" min="0" max="256" step="1" disabled={busy} value={maxColors} onChange={event => { setMaxColors(Number(event.target.value)); invalidate() }}/></label>
+      <label>分组（group_by）<select aria-label="描摹分组" disabled={busy} value={groupBy} onChange={event => { setGroupBy(event.target.value); invalidate() }}>{['none', 'color', 'parent', 'layer'].map(value => <option key={value} value={value}>{value}</option>)}</select></label>
+      <details><summary>参数说明</summary><p>色号以分号分隔；#00000000 表示透明，单色可能合并背景。</p><p>颜色数0为自动，1和2均为双色；下载保留上游分组，画布展开为路径。</p><p>高质量通道保留原裁剪像素，PNG最多8MB；本地通道长边1536px、最多2MB。</p></details>
     </> : <div className="button-pair"><label>转换方式<select value={mode} disabled={busy} onChange={(event) => { setMode(event.target.value as 'layers' | 'color'); setPickingColor(false); invalidate() }}><option value="layers">自动颜色分层</option><option value="color">指定单色提取</option></select></label>{mode === 'layers' ? <label>主要颜色数<select aria-label="主要颜色数" value={colors} disabled={busy} onChange={(event) => { setColors(Number(event.target.value)); invalidate() }}>{[2, 3, 4, 5, 6, 7, 8].map((n) => <option key={n} value={n}>{n} 色</option>)}</select></label> : <><label>目标颜色<input type="color" value={color} disabled={busy} onChange={(event) => { setColor(event.target.value); invalidate() }}/></label><label>容差<input type="number" min="0" max="120" value={tolerance} disabled={busy} onChange={(event) => { setTolerance(Math.max(0, Math.min(120, Number(event.target.value)))); invalidate() }}/></label><button type="button" disabled={busy} onClick={() => setPickingColor(!pickingColor)}>{pickingColor ? '正在取色：点击下图' : '从原图取色'}</button></>}</div>}
     <div className="vector-crop" onPointerDown={pointerDown} onPointerMove={pointerMove} onPointerUp={pointerUp} onPointerCancel={pointerUp} aria-label="拖动框选图片区域">
-      <img ref={image} src={url} alt="待分层原图" draggable={false}/>
+      <img ref={image} src={url} alt="待分层原图" draggable={false} onLoad={event => setSourcePixels({ width: event.currentTarget.naturalWidth, height: event.currentTarget.naturalHeight })}/>
       <div className="vector-crop-box" style={{ left: `${crop.x * 100}%`, top: `${crop.y * 100}%`, width: `${crop.width * 100}%`, height: `${crop.height * 100}%` }}/>
     </div>
+    {provider === 'vectorizerai' && sourcePixels.width > 0 && <small>原始裁剪约 {Math.round(sourcePixels.width * crop.width)} × {Math.round(sourcePixels.height * crop.height)} px · 上传前检查8MB上限</small>}
     <div className="button-pair"><button type="button" disabled={busy} onClick={() => { setCrop(entire); invalidate() }}>重置为整图</button><span>区域约 {Math.round(item.width * crop.width)} × {Math.round(item.height * crop.height)} mm</span><button type="button" disabled={busy || (provider === 'vectorizerai' && !cloudStatus?.available)} onClick={() => void generate()}>{busy ? '处理中…' : provider === 'vectorizerai' ? '生成高质量 SVG' : '生成分层预览'}</button></div>
     {result?.url && <a href={result.url} download>下载完整 SVG{result.mode === 'test' ? '（测试水印）' : ''}</a>}
     {resultChanged && <p className="tiny-note">下面保留的是已保存结果；新参数或新框选不会改变旧文件。需要旧结果请直接下载或恢复，不要重新付费生成。</p>}

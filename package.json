@@ -15,7 +15,8 @@
     "test:project-browser": "tsx scripts/acceptance-project.ts",
     "test:vector-browser": "tsx scripts/acceptance-color-layers.ts",
     "test:ocr-browser": "tsx scripts/acceptance-ocr.ts",
-    "test:vectorizer-browser": "tsx scripts/acceptance-vectorizerai.ts"
+    "test:vectorizer-browser": "tsx scripts/acceptance-vectorizerai.ts",
+    "test:batch2-browser": "tsx scripts/acceptance-batch2.ts"
   },
   "dependencies": {
     "@visioncortex/vtracer": "1.0.0-alpha.4",

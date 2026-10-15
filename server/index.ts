@@ -46,7 +46,8 @@ app.use((error: unknown, _request: express.Request, response: express.Response, 
     return
   }
   if (error instanceof Error && error.name === 'MulterError') {
-    response.status(400).json({ error: '上传失败：最多 3 张图片，且单张不能超过 12 MB。' })
+    const limit = _request.path === '/api/vectorize/high-quality' ? 8 : _request.path.startsWith('/api/vectorize/') ? 2 : 12
+    response.status(400).json({ error: `上传失败：此功能单张最多 ${limit} MB，请检查文件数量和大小。` })
     return
   }
   console.error('[server]', error)

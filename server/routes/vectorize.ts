@@ -10,6 +10,7 @@ import path from 'node:path'
 
 export const vectorizeRouter = Router()
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 2 * 1024 * 1024, files: 1 } })
+const cloudUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 8 * 1024 * 1024, files: 1 } })
 let active = false
 const dailyAttempts = new Map<string, number>()
 const contextSchema = z.object({ projectId: z.uuid(), assetId: z.uuid(), elementId: z.uuid(), crop: z.object({ x: z.number().min(0).max(1), y: z.number().min(0).max(1), width: z.number().positive().max(1), height: z.number().positive().max(1) }).refine(crop => crop.x + crop.width <= 1.000001 && crop.y + crop.height <= 1.000001, '框选范围无效') })
@@ -64,7 +65,7 @@ vectorizeRouter.get('/results/:id', (request, response) => {
   response.sendFile(path.resolve(config.vectorizerResultsDir, username, `${id}.svg`), error => { if (error && !response.headersSent) response.sendStatus(404) })
 })
 
-vectorizeRouter.post('/high-quality', upload.single('mask'), async (request, response) => {
+vectorizeRouter.post('/high-quality', cloudUpload.single('mask'), async (request, response) => {
   if (active) { response.status(429).json({ error: '本地描摹正在处理，请稍后再试，尚未调用上游' }); return }
   if (!request.file || request.file.mimetype !== 'image/png' || detectedImageMime(request.file.buffer) !== 'image/png') { response.status(400).json({ error: '只能提交有效PNG图片' }); return }
   const parsed = bodySchema.safeParse(request.body || {})

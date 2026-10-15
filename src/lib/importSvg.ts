@@ -8,6 +8,19 @@ const pathPattern = /^[MmLlHhVvCcSsQqTtAaZz0-9eE+.,\s-]+$/
 const paintKeys = new Set(['fill', 'stroke', 'stroke-width', 'fill-rule', 'stroke-linecap', 'stroke-linejoin', 'vector-effect', 'display'])
 const attributes = new Set(['viewBox', 'width', 'height', 'id', 'd', 'version', 'transform', 'style', 'preserveAspectRatio', 'shape-rendering', ...paintKeys])
 
+export function svgPhysicalSize(source: string) {
+  const root = new DOMParser().parseFromString(source, 'image/svg+xml').documentElement
+  const unitMm: Record<string, number> = { mm: 1, cm: 10, in: 25.4, pt: 25.4 / 72, pc: 25.4 / 6, px: 25.4 / 96, '': 25.4 / 96 }
+  const physical = (value: string | null) => {
+    const match = /^\s*(\d+(?:\.\d+)?)\s*(mm|cm|in|pt|pc|px)?\s*$/.exec(value || '')
+    return match ? Number(match[1]) * unitMm[match[2] || ''] : 0
+  }
+  const view = (root.getAttribute('viewBox') || '').trim().split(/[\s,]+/).map(Number)
+  const width = physical(root.getAttribute('width')), height = physical(root.getAttribute('height'))
+  const ratio = view.length === 4 && view[2] > 0 && view[3] > 0 ? view[2] / view[3] : width && height ? width / height : 1
+  return { width: width || (height ? height * ratio : 1000), height: height || (width ? width / ratio : 1000 / ratio) }
+}
+
 function paint(value: string): string {
   if (value === 'none') return value
   if (/^#[0-9a-f]{6}$/i.test(value)) return value.toLowerCase()
@@ -36,6 +49,13 @@ function checkedTransform(value: string): string {
 // The source document is never inserted into the page DOM.
 export async function importSvgPaths(text: string, widthMm: number): Promise<WallElement[]> {
   if (!Number.isFinite(widthMm) || widthMm <= 0) throw new Error('导入宽度无效')
+  const sourceDoc = new DOMParser().parseFromString(text, 'image/svg+xml')
+  if (!sourceDoc.documentElement.hasAttribute('viewBox')) {
+    const size = svgPhysicalSize(text)
+    if (!sourceDoc.documentElement.hasAttribute('width') || !sourceDoc.documentElement.hasAttribute('height')) throw new Error('SVG缺少画板尺寸')
+    sourceDoc.documentElement.setAttribute('viewBox', `0 0 ${size.width * 96 / 25.4} ${size.height * 96 / 25.4}`)
+    text = new XMLSerializer().serializeToString(sourceDoc)
+  }
   text = cleanVectorSvg(text, source => new DOMParser().parseFromString(source, 'image/svg+xml')).svg
   if (text.length > 1_000_000 || /<!DOCTYPE|<!ENTITY/i.test(text)) throw new Error('SVG过大或包含不支持的声明')
   const doc = new DOMParser().parseFromString(text, 'image/svg+xml')

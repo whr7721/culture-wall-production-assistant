@@ -58,7 +58,7 @@ export function TextExtractor({ projectId, item, url, remaining, onAdd }: { proj
 
   return <div className="selected-editor text-extractor">
     <h3>OCR 文字识别与重建</h3>
-    <p className="tiny-note">本地识别，无付费调用。颜色从文字框内采样；高置信度也可能有错字。原图片仍保留，旧字尚未擦除，请核对文字、颜色和位置。</p>
+    <p className="tiny-note">本地免费识别，错字需人工核对，原图旧字仍保留。</p>
     <button type="button" disabled={busy} onClick={() => void recognize()}>{busy ? '正在识别…' : '识别这张图片的文字'}</button>
     {items.length > 0 && <><div className="ocr-preview"><img src={url} alt="OCR 原图与文字框"/><svg viewBox={`0 0 ${sourceSize.width} ${sourceSize.height}`} aria-label="文字识别位置预览">{items.map((line) => <g key={line.id}><polygon points={line.polygon.map(([x, y]) => `${x},${y}`).join(' ')} fill="none" stroke={chosen.includes(line.id) ? '#ff6b2b' : '#737373'} strokeWidth={Math.max(2, sourceSize.width / 500)}/><text x={line.bbox.x} y={Math.max(16, line.bbox.y)} fontSize={Math.max(14, sourceSize.width / 80)} fill="#ff6b2b">{line.index + 1}</text></g>)}</svg></div><div className="ocr-list">{items.map((line) => <div className="ocr-line" key={line.id}>
       <label className="check"><input type="checkbox" checked={chosen.includes(line.id)} onChange={(event) => setChosen(event.target.checked ? [...chosen, line.id] : chosen.filter((id) => id !== line.id))}/>使用 · 置信度 {Math.round(line.score * 100)}%</label>

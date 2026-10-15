@@ -59,9 +59,7 @@ export function ResultPanel({ result, isLoading, error, onUseAsReference, onFlat
         </div>
       )}
 
-      <p className="result-note">
-        当前输出是视觉候选图片，不是可编辑 SVG；转换可能改变文字、图形或设备位置，须逐项核对，不能保证一比一或毫米级精度。
-      </p>
+      {result && <p className="result-note">视觉候选，非生产文件。</p>}
     </section>
   )
 }

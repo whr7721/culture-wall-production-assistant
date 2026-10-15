@@ -1,11 +1,27 @@
 import { writePsd } from 'ag-psd'
 import type { Layer } from 'ag-psd'
 import type { Project, WallElement } from './projects'
-import { elementSvg, textSvgBody } from '../../shared/elementSvg'
+import { elementSvg } from '../../shared/elementSvg'
+import { textMarkup, textObject } from './textLayout'
+
+export function editableElementSvg(item: WallElement) {
+  if (item.kind !== 'text') return elementSvg(item)
+  const bounds = textObject(item).getBoundingRect()
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${bounds.width}mm" height="${bounds.height}mm" viewBox="${bounds.left} ${bounds.top} ${bounds.width} ${bounds.height}">${textMarkup(item)}</svg>`
+}
+async function renderedItem(project: Project, item: WallElement, width: number, height: number) {
+  if (item.kind === 'image') return loadImage(await assetDataUrl(assetFor(project, item.assetId).url))
+  if (item.kind === 'path') return loadImage(`data:image/svg+xml;charset=utf-8,${encodeURIComponent(elementSvg(item))}`)
+  if (item.kind === 'text') {
+    // Full-wall viewport avoids cropping wrapped/rotated text at the object's old height.
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${project.widthMm} ${project.heightMm}"><g transform="translate(${item.x} ${item.y})">${textMarkup(item)}</g></svg>`
+    return loadImage(`data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`)
+  }
+}
 
 export function downloadElementSvg(item: WallElement) {
   const name = (item.kind === 'text' ? item.text : item.label).replace(/[\\/:*?"<>|]/g, '_').slice(0, 40) || '元素'
-  download(new Blob([elementSvg(item)], { type: 'image/svg+xml' }), `${name}-独立设计资产.svg`)
+  download(new Blob([editableElementSvg(item)], { type: 'image/svg+xml' }), `${name}-独立设计资产.svg`)
 }
 
 function download(blob: Blob, name: string) {
@@ -59,15 +75,17 @@ export async function downloadSvg(project: Project): Promise<void> {
     parts.push(`<g id="e-${item.id}">`)
     if (item.kind === 'path') parts.push(`<g transform="translate(${item.x} ${item.y})">${elementSvg(item).replace(/^<svg[^>]*>/, '').replace(/<\/svg>$/, '')}</g>`)
     if (item.kind === 'rect') parts.push(`<rect x="${item.x}" y="${item.y}" width="${item.width}" height="${item.height}" fill="${item.fill}"/>`)
-    if (item.kind === 'text') parts.push(`<g transform="translate(${item.x} ${item.y})">${textSvgBody(item)}</g>`)
+    if (item.kind === 'text') parts.push(`<g transform="translate(${item.x} ${item.y})">${textMarkup(item)}</g>`)
     if (item.kind === 'image') {
       const src = await assetDataUrl(assetFor(project, item.assetId).url)
-      parts.push(`<image x="${item.x}" y="${item.y}" width="${item.width}" height="${item.height}" preserveAspectRatio="xMidYMid meet" href="${src}" xlink:href="${src}"/>`)
+      parts.push(`<image x="${item.x}" y="${item.y}" width="${item.width}" height="${item.height}" preserveAspectRatio="none" xlink:href="${src}"/>`)
     }
     parts.push('</g>')
   }
   parts.push('</svg>')
-  download(new Blob([parts.join('\n')], { type: 'image/svg+xml' }), filename(project, 'svg'))
+  const blob = new Blob([parts.join('\n')], { type: 'image/svg+xml' })
+  if (blob.size > 20 * 1024 * 1024 && !window.confirm(`SVG约 ${(blob.size / 1024 / 1024).toFixed(1)} MB，含内嵌图片，打开可能较慢。继续下载？`)) return
+  download(blob, filename(project, 'svg'))
 }
 
 function drawItem(context: CanvasRenderingContext2D, item: WallElement, scale: number, image?: HTMLImageElement) {
@@ -75,13 +93,8 @@ function drawItem(context: CanvasRenderingContext2D, item: WallElement, scale: n
   if (item.kind === 'rect') {
     context.fillStyle = item.fill
     context.fillRect(x, y, item.width * scale, item.height * scale)
-  } else if (item.kind === 'text') {
-    context.fillStyle = item.color
-    context.font = `${item.fontWeight || 700} ${Math.max(1, item.fontSizeMm * scale)}px Microsoft YaHei, Arial, sans-serif`
-    context.textBaseline = 'top'
-    context.save(); context.translate(x, y); context.rotate((item.rotationDeg || 0) * Math.PI / 180)
-    item.text.split('\n').forEach((line, index) => context.fillText(line, 0, index * item.fontSizeMm * scale * 1.12, item.width * scale))
-    context.restore()
+  } else if (item.kind === 'text' && image) {
+    context.drawImage(image, 0, 0, context.canvas.width, context.canvas.height)
   } else if (image) context.drawImage(image, x, y, item.width * scale, item.height * scale)
 }
 function canvas(width: number, height: number): HTMLCanvasElement {
@@ -104,7 +117,7 @@ export async function downloadPsd(project: Project): Promise<void> {
   for (const item of project.elements) {
     const layerCanvas = canvas(width, height)
     const context = layerCanvas.getContext('2d')!
-    const image = item.kind === 'image' ? await loadImage(await assetDataUrl(assetFor(project, item.assetId).url)) : item.kind === 'path' ? await loadImage(`data:image/svg+xml;charset=utf-8,${encodeURIComponent(elementSvg(item))}`) : undefined
+    const image = await renderedItem(project, item, width, height)
     drawItem(context, item, scale, image)
     drawItem(compositeContext, item, scale, image)
     layers.unshift({ name: item.kind === 'text' ? `文字（源文件可修改）：${item.text.slice(0, 20)}` : item.kind === 'image' ? `图片：${item.label}` : `装饰：${item.label}`, canvas: layerCanvas })
@@ -126,7 +139,7 @@ export async function downloadPreview(project: Project): Promise<void> {
   context.fillStyle = '#ffffff'
   context.fillRect(0, 0, result.width, result.height)
   for (const item of project.elements) {
-    const image = item.kind === 'image' ? await loadImage(await assetDataUrl(assetFor(project, item.assetId).url)) : item.kind === 'path' ? await loadImage(`data:image/svg+xml;charset=utf-8,${encodeURIComponent(elementSvg(item))}`) : undefined
+    const image = await renderedItem(project, item, result.width, result.height)
     drawItem(context, item, scale, image)
   }
   await new Promise<void>((resolve, reject) => result.toBlob((blob) => { if (!blob) { reject(new Error('预览导出失败')); return }; download(blob, filename(project, 'png')); resolve() }, 'image/png'))
