@@ -213,8 +213,12 @@ export function ProjectWorkspace({ importRequest }: { importRequest: { token: st
         <label>项目名<input value={project.title} maxLength={80} onChange={(event) => mutate({ title: event.target.value })}/></label>
         <div className="inline-fields"><label>墙宽 mm<input type="number" min="1" value={project.widthMm} onChange={(event) => mutate({ widthMm: number(event.target.value, project.widthMm) })}/></label><label>墙高 mm<input type="number" min="1" value={project.heightMm} onChange={(event) => mutate({ heightMm: number(event.target.value, project.heightMm) })}/></label></div>
         <label className="check"><input type="checkbox" checked={project.measurementStatus === 'confirmed'} onChange={(event) => mutate({ measurementStatus: event.target.checked ? 'confirmed' : 'to_measure' })}/>尺寸已现场复尺</label>
-        <label>准确文案<textarea rows={4} value={project.copy} onChange={(event) => mutate({ copy: event.target.value })}/></label>
-        <label>设计要求<textarea rows={3} value={project.notes} onChange={(event) => mutate({ notes: event.target.value })}/></label>
+        <details>
+          <summary>原始需求与文案</summary>
+          <p className="tiny-note">上方生成结果带入时自动留存，供查看、复制和核对；修改这里不会改变画布或重新生图。</p>
+          <label>客户原始文案<textarea rows={4} value={project.copy} onChange={(event) => mutate({ copy: event.target.value })}/></label>
+          <label>生成时的设计要求<textarea rows={3} value={project.notes} onChange={(event) => mutate({ notes: event.target.value })}/></label>
+        </details>
         <h3>墙体障碍物</h3>
         {project.obstacles.map((item) => <div key={item.id} className="element-row"><input aria-label="障碍物名称" value={item.label} onChange={(event) => mutate({ obstacles: project.obstacles.map((o) => o.id === item.id ? { ...o, label: event.target.value } : o) })}/>{fields.map((field) => <input key={field} aria-label={field} type="number" title={field} value={item[field]} onChange={(event) => mutate({ obstacles: project.obstacles.map((o) => o.id === item.id ? { ...o, [field]: number(event.target.value, o[field]) } : o) })}/>)}<button type="button" onClick={() => mutate({ obstacles: project.obstacles.filter((o) => o.id !== item.id) })}>×</button></div>)}
         <button type="button" onClick={() => mutate({ obstacles: [...project.obstacles, { id: uid(), label: '门/缺口', x: 100, y: 100, width: 500, height: 800 }] })}>添加门／缺口</button>
