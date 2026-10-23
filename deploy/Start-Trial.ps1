@@ -27,18 +27,19 @@ function WebsiteReady([int]$localPort) {
   finally { $response.Close() }
 }
 try {
-  Set-Content -LiteralPath $diagnostic -Value "Culture Wall connection check v2026-10-22`r`nTime: $([DateTime]::Now.ToString('s'))" -Encoding UTF8
+  Set-Content -LiteralPath $diagnostic -Value "Culture Wall connection check v2026-10-23`r`nTime: $([DateTime]::Now.ToString('s'))" -Encoding UTF8
   Note "PowerShell: $($PSVersionTable.PSVersion)"
   if (-not (Test-Path -LiteralPath $sshPath)) { throw 'Windows OpenSSH client is missing. Enable OpenSSH Client in Windows Optional Features.' }
   if (-not (Test-Path -LiteralPath $keyPath) -or -not (Test-Path -LiteralPath $hostsPath)) { throw 'Package files are missing. Extract the entire ZIP first; do not run inside the ZIP.' }
   # SID-based ACLs do not depend on the user's display name or domain.
   $identity = [System.Security.Principal.WindowsIdentity]::GetCurrent()
   $acl = New-Object System.Security.AccessControl.FileSecurity
-  $acl.SetOwner($identity.User)
+  # Preserve the existing owner; changing it can require privileges the user lacks.
   $acl.SetAccessRuleProtection($true, $false)
   $rule = New-Object System.Security.AccessControl.FileSystemAccessRule($identity.User, 'FullControl', 'Allow')
   $acl.AddAccessRule($rule)
-  Set-Acl -LiteralPath $keyPath -AclObject $acl
+  # Windows PowerShell 5.1 uses .NET Framework: no PowerShell.Security module needed.
+  ([System.IO.FileInfo]::new($keyPath)).SetAccessControl($acl)
   Note 'Package key permission check: OK'
   $probe = New-Object System.Net.Sockets.TcpClient
   try {
